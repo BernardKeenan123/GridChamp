@@ -1,8 +1,22 @@
 import express from 'express'
 import { getPool } from '../db/index.js'
 import authMiddleware from '../middleware/auth.js'
+import { scoreSession } from '../services/scoring.js'
 
 const router = express.Router()
+
+// Trigger scoring for a completed session
+// In production this would be called automatically after a session ends
+router.post('/:id/score', authMiddleware, async (req, res) => {
+  try {
+    const summary = await scoreSession(req.params.id)
+    res.json({ message: 'Session scored successfully', scores: summary })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 
 // ── Get all sessions ──────────────────────────────────────────────────────────
 // Returns all race weekend sessions ordered by scheduled date ascending

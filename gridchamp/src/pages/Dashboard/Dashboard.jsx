@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import styles from './Dashboard.module.css'
+import { useAuth } from '../../context/AuthContext'
 
 // TODO: replace all mock data below with real API calls to the backend
 
@@ -49,6 +50,7 @@ function SessionCard({ session }) {
 }
 
 function Dashboard() {
+  const { user } = useAuth()
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -57,7 +59,7 @@ function Dashboard() {
         <div className={styles.header}>
           <div>
             {/* TODO: replace hardcoded name with logged in user's username from auth context */}
-            <h1>Welcome back, <span>Bernard</span></h1>
+            <h1>Welcome back, <span>{user?.username}</span></h1>
             <p>You have {upcomingSessions.length} upcoming sessions to predict</p>
           </div>
 

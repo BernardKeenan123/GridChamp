@@ -22,16 +22,15 @@ function Login() {
     setError('')
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-
-    // TODO: replace with real backend API call
-    // Temporarily derives username from email until backend auth is connected
-    login({ username: formData.email.split('@')[0], email: formData.email })
-
-    // Redirect to dashboard after login
+ const handleSubmit = async (e) => {
+  e.preventDefault()
+  try {
+    await login(formData.email, formData.password)
     navigate('/dashboard')
+  } catch (err) {
+    setError(err.message)
   }
+}
 
   return (
     <div className={styles.page}>

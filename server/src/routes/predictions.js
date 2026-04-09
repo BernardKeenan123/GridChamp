@@ -4,25 +4,67 @@ import authMiddleware from '../middleware/auth.js'
 
 const router = express.Router()
 
-// ── Global leaderboard ────────────────────────────────────────────────────────
-// Returns all users ranked by total points in descending order
-// Requires authentication to prevent public scraping of user data
-router.get('/', authMiddleware, async (req, res) => {
+// ── Submit predictions for a session ─────────────────────────────────────────
+// Accepts an array of predictions and stores them in the database
+// Deletes any existing predictions for this user/session before inserting new ones
+// so users can update their predictions before the session locks
+router.post('/:sessionId', authMiddleware, async (req, res) => {
+  const { sessionId } = req.params
+  const { predictions } = req.body
+
+  // Validate that predictions array was provided
+  if (!predictions || !Array.isArray(predictions)) {
+    return res.status(400).json({ error: 'Predictions must be an array' })
+  }
+
+  try {
+    const pool = getPool()
+
+    // Check session exists and is not locked
+    const session = await pool.query(
+      'SELECT * FROM sessions WHERE id = $1',
+      [sessionId]
+    )
+
+    if (session.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' })
+    }
+
+    if (session.rows[0].locked) {
+      return res.status(400).json({ error: 'Session is locked' })
+    }
+
+    // Delete existing predictions for this user/session before inserting new ones
+    await pool.query(
+      'DELETE FROM predictions WHERE user_id = $1 AND session_id = $2',
+      [req.userId, sessionId]
+    )
+
+    // Insert each prediction into the database
+    for (const prediction of predictions) {
+      await pool.query(
+        'INSERT INTO predictions (user_id, session_id, position, driver_code) VALUES ($1, $2, $3, $4)',
+        [req.userId, sessionId, prediction.position, prediction.driver_code]
+      )
+    }
+
+    res.status(201).json({ message: 'Predictions submitted successfully' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// ── Get user's predictions for a session ─────────────────────────────────────
+// Returns the logged in user's predictions for a specific session
+// Used on the predict page to show existing predictions if the user has already submitted
+router.get('/:sessionId', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
 
     const result = await pool.query(
-      `SELECT u.id, u.username, 
-       -- Use COALESCE to return 0 instead of null for users with no scores yet
-       COALESCE(SUM(s.points), 0) as total_points,
-       -- Count distinct sessions predicted rather than total prediction rows
-       COUNT(DISTINCT p.session_id) as predictions_made
-       FROM users u
-       -- LEFT JOIN ensures users with no scores or predictions still appear
-       LEFT JOIN scores s ON u.id = s.user_id
-       LEFT JOIN predictions p ON u.id = p.user_id
-       GROUP BY u.id, u.username
-       ORDER BY total_points DESC`
+      'SELECT * FROM predictions WHERE user_id = $1 AND session_id = $2 ORDER BY position ASC',
+      [req.userId, req.params.sessionId]
     )
 
     res.json(result.rows)

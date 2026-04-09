@@ -15,8 +15,8 @@ function Register() {
   // Holds any error message to display to the user
   const [error, setError] = useState('')
 
-  // Access the login function from auth context to log user in after registration
-  const { login } = useAuth()
+  // Access the register function from auth context to log user in after registration
+  const { register } = useAuth()
 
   // Used to redirect the user after successful registration
   const navigate = useNavigate()
@@ -27,22 +27,19 @@ function Register() {
     setError('')
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-
-    // Validate that both password fields match before submitting
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    // TODO: connect to backend auth API to create account
-    // Temporarily logs user in directly until backend registration is connected
-    login({ username: formData.username, email: formData.email })
-
-    // Redirect to dashboard after successful registration
-    navigate('/dashboard')
+  const handleSubmit = async (e) => {
+  e.preventDefault()
+  if (formData.password !== formData.confirmPassword) {
+    setError('Passwords do not match')
+    return
   }
+  try {
+    await register(formData.username, formData.email, formData.password)
+    navigate('/dashboard')
+  } catch (err) {
+    setError(err.message)
+  }
+}
 
   return (
     <div className={styles.page}>
