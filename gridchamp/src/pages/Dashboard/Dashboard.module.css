@@ -1,0 +1,254 @@
+.page {
+  min-height: calc(100vh - var(--nav-height));
+  padding: 2.5rem 2rem;
+}
+
+.inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.header h1 {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.header h1 span {
+  color: var(--color-primary);
+}
+
+.header p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.headerStats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.5rem;
+  text-align: center;
+  min-width: 100px;
+}
+
+.statValue {
+  display: block;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.statLabel {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Grid layout */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.section h2,
+.widget h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Session cards */
+.sessionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sessionCard {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sessionLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.flag {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.sessionRace {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  margin-bottom: 0.25rem;
+}
+
+.sessionMeta {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.btnPredict {
+  padding: 0.5rem 1.25rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btnPredict:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.locked {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* Sidebar widgets */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.widget {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+}
+
+/* Recent results */
+.resultList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.resultRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.resultRow:last-child {
+  border-bottom: none;
+}
+
+.resultName {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.resultMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.resultRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.resultScore {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.resultRank {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+/* Leagues */
+.leagueList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.leagueRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.leagueRow:last-child {
+  border-bottom: none;
+}
+
+.leagueName {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.leagueRight {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.leagueRank {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.leagueTotal {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.viewAll {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
+}
+
+.viewAll:hover {
+  color: var(--color-text-primary);
+}

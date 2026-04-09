@@ -1,0 +1,262 @@
+.page {
+  min-height: calc(100vh - var(--nav-height));
+  padding: 2.5rem 2rem;
+}
+
+.inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header h1 {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.header p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btnPrimary {
+  padding: 0.6rem 1.25rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  font-family: inherit;
+  transition: background-color 0.2s;
+}
+
+.btnPrimary:hover { background-color: var(--color-primary-hover); }
+
+.btnOutline {
+  padding: 0.6rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.btnOutline:hover { border-color: var(--color-text-secondary); }
+
+/* Create/join form */
+.formCard {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.formCard h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.formCard p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+}
+
+.formRow {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.input {
+  flex: 1;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  padding: 0.65rem 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus { border-color: var(--color-primary); }
+.input::placeholder { color: var(--color-text-muted); }
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.leagueList h2,
+.standingsPanel h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* League cards */
+.leagueCard {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.leagueCard:hover { border-color: var(--color-text-muted); }
+
+.leagueActive {
+  border-color: var(--color-primary);
+  background-color: rgba(232, 0, 45, 0.04);
+}
+
+.leagueCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.leagueName {
+  font-weight: 600;
+  font-size: var(--font-size-base);
+}
+
+.leagueRank {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.leagueCardMeta {
+  display: flex;
+  gap: 1rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.leagueCardBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.leaguePoints {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+.leagueLed {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Standings panel */
+.standingsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.leagueCode {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.tableWrapper {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 64px 1fr 80px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 64px 1fr 80px;
+  padding: 0.9rem 1.25rem;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.15s;
+}
+
+.tableRow:last-child { border-bottom: none; }
+.tableRow:hover { background-color: var(--color-bg-elevated); }
+
+.userRow {
+  background-color: rgba(232, 0, 45, 0.06);
+  border-left: 3px solid var(--color-primary);
+}
+
+.rank {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.username {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.userHighlight { font-weight: 600; }
+
+.youTag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background-color: rgba(232, 0, 45, 0.15);
+  color: var(--color-primary);
+}
+
+.points {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.userPoints { color: var(--color-primary); }

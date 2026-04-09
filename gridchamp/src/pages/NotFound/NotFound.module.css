@@ -1,0 +1,33 @@
+.page {
+  min-height: calc(100vh - var(--nav-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.page h1 {
+  font-size: 6rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.page p {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+}
+
+.btn {
+  padding: 0.75rem 1.75rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: var(--color-primary-hover);
+}

@@ -1,0 +1,322 @@
+.page {
+  min-height: calc(100vh - var(--nav-height));
+  padding: 2.5rem 2rem;
+}
+
+.inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+.back {
+  display: inline-block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+  transition: color 0.2s;
+}
+
+.back:hover {
+  color: var(--color-text-primary);
+}
+
+.sessionHeader {
+  margin-bottom: 2rem;
+}
+
+.sessionInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.flag {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.sessionInfo h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.sessionInfo h1 span {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
+.sessionInfo p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.predictionSection h2,
+.driverPanel h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 1rem;
+}
+
+/* Prediction slots */
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  min-height: 52px;
+}
+
+.slotEmpty {
+  background-color: var(--color-bg-surface);
+  border-style: dashed;
+}
+
+.slotFilled {
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+
+.slotPos {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  min-width: 28px;
+}
+
+.driverColour {
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.slotCode {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  min-width: 36px;
+}
+
+.slotName {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  flex: 1;
+}
+
+.slotTeam {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.slotPlaceholder {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.removeBtn {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.removeBtn:hover {
+  color: var(--color-primary);
+  background-color: rgba(232, 0, 45, 0.1);
+}
+
+.btnSubmit {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  font-family: inherit;
+  transition: background-color 0.2s;
+}
+
+.btnSubmit:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btnDisabled {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* Driver panel */
+.driverPanel {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+.driverList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.driverCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-elevated);
+  transition: border-color 0.2s;
+}
+
+.driverCard:hover:not(.driverUsed) {
+  border-color: var(--color-text-muted);
+}
+
+.driverUsed {
+  opacity: 0.4;
+}
+
+.teamColour {
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.driverInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.driverCode {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.driverName {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.driverTeam {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.posButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 180px;
+  justify-content: flex-end;
+}
+
+.posBtn {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.7rem;
+  font-family: inherit;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background-color: transparent;
+  transition: all 0.15s;
+}
+
+.posBtn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.posBtnTaken {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.usedLabel {
+  font-size: 0.75rem;
+  color: var(--color-success);
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Success state */
+.successBox {
+  max-width: 480px;
+  margin: 4rem auto;
+  text-align: center;
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 3rem 2rem;
+}
+
+.successIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(0, 200, 83, 0.12);
+  color: var(--color-success);
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.successBox h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.successBox p {
+  color: var(--color-text-secondary);
+  margin-bottom: 2rem;
+}
+
+.btnPrimary {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btnPrimary:hover {
+  background-color: var(--color-primary-hover);
+}
