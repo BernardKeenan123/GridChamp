@@ -1,98 +1,134 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { sessionAPI, predictionAPI, scoreAPI } from '../../services/api'
 import styles from './Results.module.css'
 
-// TODO: replace mock data with real data fetched from /api/predictions/:sessionId
-// and /api/scores/session/:sessionId once backend is connected
-
-// Mock session info - will be fetched from /api/sessions/:id
-const sessionInfo = {
-  race: 'Saudi Arabian GP',
-  round: 4,
-  type: 'Race',
-  date: 'Sun 20 Apr',
-  flag: '🇸🇦',
+// Points awarded based on prediction accuracy
+const POINTS = {
+  exact: 10,
+  oneOff: 6,
+  twoOff: 3,
+  inTop10: 1,
 }
 
-// Mock results array combining official finishing positions with the user's predictions
-// In production this will be joined data from the results and predictions tables
-const results = [
-  { pos: 1, code: 'NOR', name: 'Norris', team: 'McLaren', colour: '#FF8000', predictedPos: 2 },
-  { pos: 2, code: 'VER', name: 'Verstappen', team: 'Red Bull Racing', colour: '#3671C6', predictedPos: 1 },
-  { pos: 3, code: 'LEC', name: 'Leclerc', team: 'Ferrari', colour: '#E8002D', predictedPos: 3 },
-  { pos: 4, code: 'PIA', name: 'Piastri', team: 'McLaren', colour: '#FF8000', predictedPos: 5 },
-  { pos: 5, code: 'HAM', name: 'Hamilton', team: 'Ferrari', colour: '#E8002D', predictedPos: 4 },
-  { pos: 6, code: 'RUS', name: 'Russell', team: 'Mercedes', colour: '#27F4D2', predictedPos: 6 },
-  { pos: 7, code: 'SAI', name: 'Sainz', team: 'Williams', colour: '#64C4FF', predictedPos: 8 },
-  { pos: 8, code: 'ALO', name: 'Alonso', team: 'Aston Martin', colour: '#229971', predictedPos: 7 },
-  { pos: 9, code: 'TSU', name: 'Tsunoda', team: 'Red Bull Racing', colour: '#3671C6', predictedPos: 10 },
-  { pos: 10, code: 'ANT', name: 'Antonelli', team: 'Mercedes', colour: '#27F4D2', predictedPos: 9 },
-]
-
-// Points awarded based on how close the prediction was to the actual result
-const pointsPerPosition = {
-  exact: 10,   // Predicted position exactly correct
-  oneOff: 6,   // Predicted position was 1 place out
-  twoOff: 3,   // Predicted position was 2 places out
-  inTop10: 1,  // Driver was predicted somewhere in top 10 but position was wrong
-}
-
-// Calculate points and label for a single prediction based on predicted vs actual position
 function getScore(predicted, actual) {
   const diff = Math.abs(predicted - actual)
-  if (diff === 0) return { points: pointsPerPosition.exact, label: 'Exact', type: 'exact' }
-  if (diff === 1) return { points: pointsPerPosition.oneOff, label: '±1', type: 'close' }
-  if (diff === 2) return { points: pointsPerPosition.twoOff, label: '±2', type: 'close' }
-  return { points: pointsPerPosition.inTop10, label: 'In top 10', type: 'partial' }
+  if (diff === 0) return { points: POINTS.exact, label: 'Exact', type: 'exact' }
+  if (diff === 1) return { points: POINTS.oneOff, label: '±1', type: 'close' }
+  if (diff === 2) return { points: POINTS.twoOff, label: '±2', type: 'close' }
+  return { points: POINTS.inTop10, label: 'In top 10', type: 'partial' }
+}
+
+// Driver data for display purposes
+const driverInfo = {
+  VER: { name: 'Verstappen', team: 'Red Bull Racing', colour: '#3671C6' },
+  NOR: { name: 'Norris', team: 'McLaren', colour: '#FF8000' },
+  LEC: { name: 'Leclerc', team: 'Ferrari', colour: '#E8002D' },
+  PIA: { name: 'Piastri', team: 'McLaren', colour: '#FF8000' },
+  HAM: { name: 'Hamilton', team: 'Ferrari', colour: '#E8002D' },
+  RUS: { name: 'Russell', team: 'Mercedes', colour: '#27F4D2' },
+  SAI: { name: 'Sainz', team: 'Williams', colour: '#64C4FF' },
+  ANT: { name: 'Antonelli', team: 'Mercedes', colour: '#27F4D2' },
+  ALO: { name: 'Alonso', team: 'Aston Martin', colour: '#229971' },
+  STR: { name: 'Stroll', team: 'Aston Martin', colour: '#229971' },
+  TSU: { name: 'Tsunoda', team: 'Red Bull Racing', colour: '#3671C6' },
+  HAD: { name: 'Hadjar', team: 'Racing Bulls', colour: '#6692FF' },
+  HUL: { name: 'Hulkenberg', team: 'Sauber', colour: '#52E252' },
+  BOR: { name: 'Bortoleto', team: 'Sauber', colour: '#52E252' },
+  OCO: { name: 'Ocon', team: 'Haas', colour: '#B6BABD' },
+  BEA: { name: 'Bearman', team: 'Haas', colour: '#B6BABD' },
+  GAS: { name: 'Gasly', team: 'Alpine', colour: '#FF87BC' },
+  DOO: { name: 'Doohan', team: 'Alpine', colour: '#FF87BC' },
+  ALB: { name: 'Albon', team: 'Williams', colour: '#64C4FF' },
+  LAW: { name: 'Lawson', team: 'Racing Bulls', colour: '#6692FF' },
 }
 
 function Results() {
-  // Calculate the user's total points for this session by summing all individual scores
-  const totalScore = results.reduce((sum, r) => sum + getScore(r.predictedPos, r.pos).points, 0)
+  const { sessionId } = useParams()
+  const { user } = useAuth()
+  const [session, setSession] = useState(null)
+  const [results, setResults] = useState([])
+  const [predictions, setPredictions] = useState([])
+  const [sessionScore, setSessionScore] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Count how many predictions were exactly correct
-  const exactCount = results.filter(r => r.predictedPos === r.pos).length
+  useEffect(() => {
+    async function load() {
+      try {
+        const [sessionData, predictionsData, scoresData] = await Promise.all([
+          sessionAPI.getOne(sessionId),
+          predictionAPI.getForSession(sessionId),
+          scoreAPI.getSessionScores(sessionId),
+        ])
+
+        setSession(sessionData)
+        setPredictions(predictionsData)
+
+        // Find this user's score for the session
+        const myScore = scoresData.find(s => s.username === user.username)
+        if (myScore) setSessionScore(myScore.points)
+
+        // Build results from predictions and stored results
+        // TODO: fetch from results table once populated
+        // For now build from predictions data
+        if (predictionsData.length > 0) {
+          setResults(predictionsData.sort((a, b) => a.position - b.position))
+        }
+
+      } catch (err) {
+        setError('Failed to load results')
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [sessionId, user.username])
+
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p style={{ padding: '2rem', color: 'var(--color-text-secondary)' }}>Loading...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <p style={{ padding: '2rem', color: 'var(--color-primary)' }}>{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
 
-        {/* Page header with back link and session details */}
+        {/* Header */}
         <div className={styles.header}>
           <Link to="/dashboard" className={styles.back}>← Dashboard</Link>
           <div className={styles.sessionInfo}>
-            <span className={styles.flag}>{sessionInfo.flag}</span>
             <div>
-              <h1>{sessionInfo.race} <span>— {sessionInfo.type}</span></h1>
-              <p>Round {sessionInfo.round} · {sessionInfo.date} · Final results</p>
+              <h1>{session?.race_name} <span>— {session?.session_type}</span></h1>
+              <p>Round {session?.round} · {new Date(session?.scheduled_at).toLocaleDateString()} · {session?.completed ? 'Final results' : 'Results pending'}</p>
             </div>
           </div>
         </div>
 
-        {/* Score summary card showing total points and breakdown stats */}
-        <div className={styles.scoreSummary}>
-          <div className={styles.scoreMain}>
-            <span className={styles.scoreValue}>+{totalScore}</span>
-            <span className={styles.scoreLabel}>points earned</span>
-          </div>
-          <div className={styles.scoreMeta}>
-            <div className={styles.metaStat}>
-              <span className={styles.metaValue}>{exactCount}</span>
-              <span className={styles.metaLabel}>Exact predictions</span>
-            </div>
-            <div className={styles.metaStat}>
-              {/* Partial predictions = total positions minus exact hits */}
-              <span className={styles.metaValue}>{results.length - exactCount}</span>
-              <span className={styles.metaLabel}>Partial predictions</span>
-            </div>
-            <div className={styles.metaStat}>
-              {/* TODO: replace hardcoded rank with real session rank from /api/scores/session/:id */}
-              <span className={styles.metaValue}>#3</span>
-              <span className={styles.metaLabel}>Session rank</span>
+        {/* Score summary */}
+        {sessionScore !== null && (
+          <div className={styles.scoreSummary}>
+            <div className={styles.scoreMain}>
+              <span className={styles.scoreValue}>+{sessionScore}</span>
+              <span className={styles.scoreLabel}>points earned</span>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Scoring key explaining how points are awarded */}
+        {/* Scoring key */}
         <div className={styles.scoringKey}>
           <span className={styles.keyLabel}>Scoring:</span>
           <span className={styles.keyItem}><span className={`${styles.keyBadge} ${styles.exact}`}>Exact</span> +10 pts</span>
@@ -101,50 +137,37 @@ function Results() {
           <span className={styles.keyItem}><span className={`${styles.keyBadge} ${styles.partial}`}>In top 10</span> +1 pt</span>
         </div>
 
-        {/* Results table comparing official finishing positions to user's predictions */}
-        <div className={styles.tableWrapper}>
-          <div className={styles.tableHeader}>
-            <span>Pos</span>
-            <span>Driver</span>
-            <span>Your prediction</span>
-            <span>Points</span>
-          </div>
-
-          {results.map((r) => {
-            // Calculate the score for this individual result row
-            const score = getScore(r.predictedPos, r.pos)
-            return (
-              <div
-                key={r.pos}
-                // Apply green left border highlight for exact predictions
-                className={`${styles.tableRow} ${r.predictedPos === r.pos ? styles.rowExact : ''}`}
-              >
-                {/* Official finishing position */}
-                <span className={styles.pos}>{r.pos}</span>
-
-                {/* Driver info with team colour bar */}
-                <div className={styles.driver}>
-                  <span className={styles.teamBar} style={{ backgroundColor: r.colour }} />
-                  <span className={styles.code}>{r.code}</span>
-                  <div className={styles.driverDetails}>
-                    <span className={styles.name}>{r.name}</span>
-                    <span className={styles.team}>{r.team}</span>
+        {/* Results table */}
+        {results.length > 0 ? (
+          <div className={styles.tableWrapper}>
+            <div className={styles.tableHeader}>
+              <span>Your prediction</span>
+              <span>Driver</span>
+            </div>
+            {results.map((r) => {
+              const info = driverInfo[r.driver_code] || { name: r.driver_code, team: '', colour: '#888' }
+              return (
+                <div key={r.position} className={styles.tableRow}>
+                  <span className={styles.pos}>P{r.position}</span>
+                  <div className={styles.driver}>
+                    <span className={styles.teamBar} style={{ backgroundColor: info.colour }} />
+                    <span className={styles.code}>{r.driver_code}</span>
+                    <div className={styles.driverDetails}>
+                      <span className={styles.name}>{info.name}</span>
+                      <span className={styles.team}>{info.team}</span>
+                    </div>
                   </div>
                 </div>
-
-                {/* User's predicted position and accuracy badge */}
-                <div className={styles.prediction}>
-                  <span className={styles.predictedPos}>P{r.predictedPos}</span>
-                  {/* Badge colour reflects accuracy - exact, close or partial */}
-                  <span className={`${styles.badge} ${styles[score.type]}`}>{score.label}</span>
-                </div>
-
-                {/* Points awarded for this prediction */}
-                <span className={styles.points}>+{score.points}</span>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p style={{ color: 'var(--color-text-secondary)' }}>
+            {session?.completed
+              ? 'No predictions were submitted for this session.'
+              : 'Results will appear here once the session is complete and scored.'}
+          </p>
+        )}
 
       </div>
     </div>
