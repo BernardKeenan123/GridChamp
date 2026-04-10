@@ -1,17 +1,7 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { sessionAPI, predictionAPI } from '../../services/api'
 import styles from './Predict.module.css'
-
-// TODO: replace mock session info with real data fetched from /api/sessions/:id
-const sessionInfo = {
-  race: 'Miami Grand Prix',
-  round: 6,
-  type: 'Qualifying',
-  date: 'Sat 3 May',
-  time: '22:00 BST',
-  flag: '🇺🇸',
-  positions: 10,
-}
 
 // Full 2025 F1 driver list with team colours for visual identification
 // TODO: fetch driver list dynamically from OpenF1 API
@@ -38,58 +28,109 @@ const drivers = [
   { id: 20, code: 'LAW', name: 'Lawson', team: 'Racing Bulls', colour: '#6692FF' },
 ]
 
+const POSITIONS = 10
+
 function Predict() {
-  // Get the session ID from the URL params e.g. /predict/1
   const { sessionId } = useParams()
+  const navigate = useNavigate()
 
-  // Predictions array holds one slot per position, initialised as null (empty)
-  const [predictions, setPredictions] = useState(
-    Array(sessionInfo.positions).fill(null)
-  )
-
-  // Tracks whether the user has successfully submitted their predictions
+  const [session, setSession] = useState(null)
+  const [predictions, setPredictions] = useState(Array(POSITIONS).fill(null))
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false)
 
-  // Get the IDs of drivers already assigned to a position
+  // Load session info and any existing predictions
+  useEffect(() => {
+    async function load() {
+      try {
+        const [sessionData, existingPredictions] = await Promise.all([
+          sessionAPI.getOne(sessionId),
+          predictionAPI.getForSession(sessionId),
+        ])
+
+        setSession(sessionData)
+
+        // If user has already submitted predictions, pre-fill the slots
+        if (existingPredictions.length > 0) {
+          const filled = Array(POSITIONS).fill(null)
+          for (const pred of existingPredictions) {
+            const driver = drivers.find(d => d.code === pred.driver_code)
+            if (driver && pred.position <= POSITIONS) {
+              filled[pred.position - 1] = driver
+            }
+          }
+          setPredictions(filled)
+          setAlreadySubmitted(true)
+        }
+      } catch (err) {
+        setError('Failed to load session')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [sessionId])
+
   const assignedIds = predictions.filter(Boolean).map(d => d.id)
 
-  // Filter out assigned drivers so they can't be selected twice
-  const availableDrivers = drivers.filter(d => !assignedIds.includes(d.id))
-
-  // Assign a driver to a specific position index
   const handleSelect = (position, driver) => {
     const updated = [...predictions]
     updated[position] = driver
     setPredictions(updated)
   }
 
-  // Remove a driver from a specific position, returning the slot to empty
   const handleRemove = (position) => {
     const updated = [...predictions]
     updated[position] = null
     setPredictions(updated)
   }
 
-  const handleSubmit = () => {
-    // Guard against submitting with unfilled positions
+  const handleSubmit = async () => {
     if (predictions.some(p => p === null)) return
-
-    // TODO: POST predictions to /api/predictions/:sessionId
-    console.log('Submitting predictions:', predictions)
-    setSubmitted(true)
+    setSubmitting(true)
+    try {
+      // Format predictions for the API
+      const payload = predictions.map((driver, i) => ({
+        position: i + 1,
+        driver_code: driver.code,
+      }))
+      await predictionAPI.submit(sessionId, payload)
+      setSubmitted(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  // Only allow submission once all positions have been filled
   const allFilled = predictions.every(p => p !== null)
 
-  // Show success confirmation screen after submission
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <p style={{ padding: '2rem', color: 'var(--color-text-secondary)' }}>Loading...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <p style={{ padding: '2rem', color: 'var(--color-primary)' }}>{error}</p>
+      </div>
+    )
+  }
+
   if (submitted) {
     return (
       <div className={styles.page}>
         <div className={styles.successBox}>
           <div className={styles.successIcon}>✓</div>
           <h2>Predictions submitted!</h2>
-          <p>Your predictions for {sessionInfo.type} — {sessionInfo.race} have been locked in.</p>
+          <p>Your predictions for {session?.session_type} — {session?.race_name} have been locked in.</p>
           <Link to="/dashboard" className={styles.btnPrimary}>Back to dashboard</Link>
         </div>
       </div>
@@ -104,18 +145,17 @@ function Predict() {
         <div className={styles.sessionHeader}>
           <Link to="/dashboard" className={styles.back}>← Dashboard</Link>
           <div className={styles.sessionInfo}>
-            <span className={styles.flag}>{sessionInfo.flag}</span>
             <div>
-              <h1>{sessionInfo.race} <span>— {sessionInfo.type}</span></h1>
-              <p>Round {sessionInfo.round} · {sessionInfo.date} at {sessionInfo.time} · Predict the top {sessionInfo.positions} positions</p>
+              <h1>{session?.race_name} <span>— {session?.session_type}</span></h1>
+              <p>Round {session?.round} · {new Date(session?.scheduled_at).toLocaleString()} · Predict the top {POSITIONS} positions</p>
             </div>
           </div>
         </div>
 
-        {/* Two column layout - prediction slots on left, driver panel on right */}
+        {/* Two column layout */}
         <div className={styles.grid}>
 
-          {/* Left column - ordered prediction slots for each position */}
+          {/* Left column - prediction slots */}
           <div className={styles.predictionSection}>
             <h2>Your predictions</h2>
             <p className={styles.hint}>Select a driver from the panel for each position</p>
@@ -125,19 +165,11 @@ function Predict() {
                   <span className={styles.slotPos}>P{i + 1}</span>
                   {driver ? (
                     <>
-                      {/* Team colour bar for visual identification */}
-                      <span
-                        className={styles.driverColour}
-                        style={{ backgroundColor: driver.colour }}
-                      />
+                      <span className={styles.driverColour} style={{ backgroundColor: driver.colour }} />
                       <span className={styles.slotCode}>{driver.code}</span>
                       <span className={styles.slotName}>{driver.name}</span>
                       <span className={styles.slotTeam}>{driver.team}</span>
-                      {/* Remove button to clear this position */}
-                      <button
-                        className={styles.removeBtn}
-                        onClick={() => handleRemove(i)}
-                      >✕</button>
+                      <button className={styles.removeBtn} onClick={() => handleRemove(i)}>✕</button>
                     </>
                   ) : (
                     <span className={styles.slotPlaceholder}>Select a driver</span>
@@ -146,48 +178,42 @@ function Predict() {
               ))}
             </div>
 
-            {/* Submit button - disabled until all positions are filled */}
+            {/* Submit button */}
             <button
-              className={`${styles.btnSubmit} ${!allFilled ? styles.btnDisabled : ''}`}
-              onClick={handleSubmit}
-              disabled={!allFilled}
+            className={`${styles.btnSubmit} ${!allFilled || submitting || alreadySubmitted ? styles.btnDisabled : ''}`}
+            onClick={handleSubmit}
+            disabled={!allFilled || submitting || alreadySubmitted}
             >
-              {/* Show progress count instead of submit text until all slots are filled */}
-              {allFilled ? 'Submit predictions' : `${predictions.filter(Boolean).length} / ${sessionInfo.positions} positions filled`}
+              {submitting
+              ? 'Submitting...'
+              : alreadySubmitted
+              ? 'Predictions already submitted'
+              : allFilled
+              ? 'Submit predictions'
+              : `${predictions.filter(Boolean).length} / ${POSITIONS} positions filled`}
             </button>
           </div>
 
-          {/* Right column - full driver list with position assignment buttons */}
+          {/* Right column - driver panel */}
           <div className={styles.driverPanel}>
             <h2>Drivers</h2>
-            <p className={styles.hint}>{availableDrivers.length} remaining</p>
+            <p className={styles.hint}>{drivers.length - assignedIds.length} remaining</p>
             <div className={styles.driverList}>
               {drivers.map(driver => {
                 const isUsed = assignedIds.includes(driver.id)
                 return (
-                  <div
-                    key={driver.id}
-                    // Dim the driver card once they have been assigned to a position
-                    className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ''}`}
-                  >
-                    {/* Team colour bar */}
-                    <span
-                      className={styles.teamColour}
-                      style={{ backgroundColor: driver.colour }}
-                    />
+                  <div key={driver.id} className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ''}`}>
+                    <span className={styles.teamColour} style={{ backgroundColor: driver.colour }} />
                     <div className={styles.driverInfo}>
                       <span className={styles.driverCode}>{driver.code}</span>
                       <span className={styles.driverName}>{driver.name}</span>
                       <span className={styles.driverTeam}>{driver.team}</span>
                     </div>
-
-                    {/* Show position buttons if driver hasn't been assigned yet */}
                     {!isUsed && (
                       <div className={styles.posButtons}>
                         {predictions.map((slot, i) => (
                           <button
                             key={i}
-                            // Grey out position buttons that are already taken
                             className={`${styles.posBtn} ${slot !== null ? styles.posBtnTaken : ''}`}
                             onClick={() => !slot && handleSelect(i, driver)}
                             disabled={slot !== null}
@@ -198,15 +224,12 @@ function Predict() {
                         ))}
                       </div>
                     )}
-
-                    {/* Show Added label once driver has been placed in a slot */}
                     {isUsed && <span className={styles.usedLabel}>Added</span>}
                   </div>
                 )
               })}
             </div>
           </div>
-
         </div>
       </div>
     </div>
