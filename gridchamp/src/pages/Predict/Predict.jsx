@@ -293,7 +293,7 @@ function Predict() {
               {drivers.map(driver => {
                 const isUsed = assignedIds.includes(driver.id)
                 return (
-                <div key={driver.id}
+                  <div key={driver.id}
                   className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ''}`}
                   onClick={() => {
                     if (isUsed) return
@@ -301,6 +301,40 @@ function Predict() {
                     if (nextEmpty !== -1) handleSelect(nextEmpty, driver)
                   }}
                 >
+                  <div key={driver.id}
+  className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ''}`}
+  onClick={() => {
+    if (isUsed) return
+    const nextEmpty = predictions.findIndex(p => p === null)
+    if (nextEmpty !== -1) handleSelect(nextEmpty, driver)
+  }}
+>
+  <span className={styles.teamColour} style={{ backgroundColor: driver.colour }} />
+  <div className={styles.driverInfo}>
+    <span className={styles.driverCode}>{driver.code}</span>
+    <span className={styles.driverName}>{driver.name}</span>
+    <span className={styles.driverTeam}>{driver.team}</span>
+  </div>
+  {!isUsed && (
+    <div className={styles.posButtons}>
+      {predictions.map((slot, i) => (
+        <button
+          key={i}
+          className={`${styles.posBtn} ${slot !== null ? styles.posBtnTaken : ''}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!slot) handleSelect(i, driver)
+          }}
+          disabled={slot !== null}
+          title={slot ? `P${i + 1} taken` : `Place at P${i + 1}`}
+        >
+          P{i + 1}
+        </button>
+      ))}
+    </div>
+  )}
+  {isUsed && <span className={styles.usedLabel}>Added</span>}
+</div>
                     {!isUsed && (
                       <div className={styles.posButtons}>
                         {predictions.map((slot, i) => (
