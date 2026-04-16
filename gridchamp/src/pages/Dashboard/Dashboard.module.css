@@ -256,6 +256,12 @@
 @media (max-width: 768px) {
   .page {
     padding: 1.25rem 1rem;
+    overflow-x: hidden;
+  }
+
+  .inner {
+    overflow-x: hidden;
+    width: 100%;
   }
 
   .header {
@@ -280,7 +286,15 @@
   }
 
   .grid {
-    grid-template-columns: 1fr;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .section,
+  .sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
   .sessionCard {

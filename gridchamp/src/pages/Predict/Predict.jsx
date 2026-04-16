@@ -293,13 +293,14 @@ function Predict() {
               {drivers.map(driver => {
                 const isUsed = assignedIds.includes(driver.id)
                 return (
-                  <div key={driver.id} className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ''}`}>
-                    <span className={styles.teamColour} style={{ backgroundColor: driver.colour }} />
-                    <div className={styles.driverInfo}>
-                      <span className={styles.driverCode}>{driver.code}</span>
-                      <span className={styles.driverName}>{driver.name}</span>
-                      <span className={styles.driverTeam}>{driver.team}</span>
-                    </div>
+                <div key={driver.id}
+                  className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ''}`}
+                  onClick={() => {
+                    if (isUsed) return
+                    const nextEmpty = predictions.findIndex(p => p === null)
+                    if (nextEmpty !== -1) handleSelect(nextEmpty, driver)
+                  }}
+                >
                     {!isUsed && (
                       <div className={styles.posButtons}>
                         {predictions.map((slot, i) => (
