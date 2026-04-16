@@ -11,6 +11,7 @@ import Predict from './pages/Predict/Predict'
 import Results from './pages/Results/Results'
 import Leaderboard from './pages/Leaderboard/Leaderboard'
 import Leagues from './pages/Leagues/Leagues'
+import Weekend from './pages/Weekend/Weekend'
 import NotFound from './pages/NotFound/NotFound'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/results/:sessionId" element={<ProtectedRoute><Results /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/leagues" element={<ProtectedRoute><Leagues /></ProtectedRoute>} />
+          <Route path="/weekend/:round" element={<ProtectedRoute><Weekend /></ProtectedRoute>}/>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

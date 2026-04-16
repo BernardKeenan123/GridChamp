@@ -4,27 +4,47 @@ import { useAuth } from '../../context/AuthContext'
 import { sessionAPI, scoreAPI, leaderboardAPI, leagueAPI } from '../../services/api'
 import styles from './Dashboard.module.css'
 
-function SessionCard({ session }) {
+// Group an array of sessions by race_name
+function groupByRaceWeekend(sessions) {
+  const groups = {}
+  for (const session of sessions) {
+    if (!groups[session.race_name]) {
+      groups[session.race_name] = {
+        race_name: session.race_name,
+        round: session.round,
+        sessions: [],
+      }
+    }
+    groups[session.race_name].sessions.push(session)
+  }
+  // Return sorted by round number
+  return Object.values(groups).sort((a, b) => a.round - b.round)
+}
+
+function RaceWeekendCard({ weekend }) {
   const now = new Date()
-  const sessionTime = new Date(session.scheduled_at)
-  const isLocked = now > sessionTime
+  const allLocked = weekend.sessions.every(s => new Date(s.scheduled_at) < now)
+  const anyOpen = weekend.sessions.some(s => new Date(s.scheduled_at) > now)
+  const sessionCount = weekend.sessions.length
 
   return (
     <div className={styles.sessionCard}>
       <div className={styles.sessionLeft}>
         <span className={styles.flag}>🏁</span>
         <div>
-          <div className={styles.sessionRace}>{session.race_name}</div>
+          <div className={styles.sessionRace}>{weekend.race_name}</div>
           <div className={styles.sessionMeta}>
-            Round {session.round} · {session.session_type} · {new Date(session.scheduled_at).toLocaleString()}
+            Round {weekend.round} · {sessionCount} session{sessionCount !== 1 ? 's' : ''} · {anyOpen ? 'Predictions open' : 'Locked'}
           </div>
         </div>
       </div>
       <div className={styles.sessionRight}>
-        {isLocked
-          ? <span className={styles.locked}>Locked</span>
-          : <Link to={`/predict/${session.id}`} className={styles.btnPredict}>Predict</Link>
-        }
+        <Link
+          to={`/weekend/${weekend.round}`}
+          className={styles.btnPredict}
+        >
+          View sessions
+        </Link>
       </div>
     </div>
   )
@@ -32,17 +52,15 @@ function SessionCard({ session }) {
 
 function Dashboard() {
   const { user } = useAuth()
-  const [sessions, setSessions] = useState([])
+  const [weekends, setWeekends] = useState([])
   const [totalPoints, setTotalPoints] = useState(0)
   const [globalRank, setGlobalRank] = useState(null)
   const [leagues, setLeagues] = useState([])
-  const [recentScores, setRecentScores] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadDashboard() {
       try {
-        // Fetch all data in parallel
         const [sessionsData, scoreData, leaderboardData, leaguesData] = await Promise.all([
           sessionAPI.getAll(),
           scoreAPI.getMyTotal(),
@@ -50,17 +68,13 @@ function Dashboard() {
           leagueAPI.getMyLeagues(),
         ])
 
-        // Filter to only show upcoming/unlocked sessions
-        const now = new Date()
-        const upcoming = sessionsData
-        .filter(s => !s.completed)
-        .slice(0, 5)
-        
-        setSessions(upcoming)
+        // Filter to only incomplete sessions then group by race weekend
+        const upcoming = sessionsData.filter(s => !s.completed)
+        const grouped = groupByRaceWeekend(upcoming)
+        setWeekends(grouped)
         setTotalPoints(scoreData.total)
         setLeagues(leaguesData)
 
-        // Find the current user's rank in the global leaderboard
         const userRank = leaderboardData.findIndex(u => u.id === user.id) + 1
         setGlobalRank(userRank || null)
 
@@ -88,14 +102,11 @@ function Dashboard() {
     <div className={styles.page}>
       <div className={styles.inner}>
 
-        {/* Page header with welcome message and summary stats */}
         <div className={styles.header}>
           <div>
             <h1>Welcome back, <span>{user?.username}</span></h1>
-            <p>You have {sessions.length} upcoming sessions to predict</p>
+            <p>{weekends.length} upcoming race weekend{weekends.length !== 1 ? 's' : ''}</p>
           </div>
-
-          {/* Summary stats */}
           <div className={styles.headerStats}>
             <div className={styles.stat}>
               <span className={styles.statValue}>{totalPoints}</span>
@@ -109,22 +120,17 @@ function Dashboard() {
         </div>
 
         <div className={styles.grid}>
-
-          {/* Upcoming sessions */}
           <div className={styles.section}>
-            <h2>Upcoming sessions</h2>
+            <h2>Upcoming race weekends</h2>
             <div className={styles.sessionList}>
-              {sessions.length > 0
-                ? sessions.map(s => <SessionCard key={s.id} session={s} />)
-                : <p style={{ color: 'var(--color-text-secondary)' }}>No upcoming sessions available.</p>
+              {weekends.length > 0
+                ? weekends.map(w => <RaceWeekendCard key={w.round} weekend={w} />)
+                : <p style={{ color: 'var(--color-text-secondary)' }}>No upcoming race weekends.</p>
               }
             </div>
           </div>
 
-          {/* Sidebar */}
           <div className={styles.sidebar}>
-
-            {/* League standings widget */}
             <div className={styles.widget}>
               <h3>Your leagues</h3>
               {leagues.length > 0 ? (
@@ -145,7 +151,6 @@ function Dashboard() {
               )}
               <Link to="/leagues" className={styles.viewAll}>Manage leagues →</Link>
             </div>
-
           </div>
         </div>
       </div>

@@ -1,25 +1,19 @@
 import { getPool } from '../db/index.js'
 import { getSessionResults, getDrivers } from './openF1.js'
 
-// Points awarded based on prediction accuracy
-const POINTS = {
-  exact: 10,    // Predicted position exactly correct
-  oneOff: 6,    // Predicted position was 1 place out
-  twoOff: 3,    // Predicted position was 2 places out
-  inTop10: 1,   // Driver was in top 10 but position was wrong
-}
+// Standard F1 points system — familiar to all F1 fans
+const F1_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 
-// Calculate points for a single prediction
+// Award points only for exact position predictions
 function calculatePoints(predictedPos, actualPos) {
-  const diff = Math.abs(predictedPos - actualPos)
-  if (diff === 0) return POINTS.exact
-  if (diff === 1) return POINTS.oneOff
-  if (diff === 2) return POINTS.twoOff
-  return POINTS.inTop10
+  if (predictedPos === actualPos) {
+    return F1_POINTS[actualPos - 1] || 0
+  }
+  return 0
 }
 
-// Main scoring function - fetches results from OpenF1, scores all predictions
-// for a session, and stores the results in the scores table
+/* Main scoring function - fetches results from OpenF1, scores all predictions 
+  for a session, and stores the results in the scores table */
 export async function scoreSession(sessionId) {
   const pool = getPool()
 
