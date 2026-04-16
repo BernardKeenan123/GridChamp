@@ -1,10 +1,15 @@
 import { getPool } from '../db/index.js'
 import { getSessionResults, getDrivers } from './openF1.js'
 
-// Standard F1 points system — familiar to all F1 fans
+// Standard F1 points system
 const F1_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 
-// Award points only for exact position predictions
+// Bonus points
+const POLE_BONUS = 5
+const FASTEST_LAP_BONUS = 5
+const DRIVER_OF_DAY_BONUS = 3
+
+// Award points for exact position prediction using F1 points system
 function calculatePoints(predictedPos, actualPos) {
   if (predictedPos === actualPos) {
     return F1_POINTS[actualPos - 1] || 0
@@ -12,12 +17,89 @@ function calculatePoints(predictedPos, actualPos) {
   return 0
 }
 
-/* Main scoring function - fetches results from OpenF1, scores all predictions 
-  for a session, and stores the results in the scores table */
-export async function scoreSession(sessionId) {
+// Score a single user's predictions for a session against actual results
+// leagueConfig controls how many positions to score and which bonuses apply
+async function scoreUserPredictions(pool, userId, sessionId, driverCodeToPosition, fastestLapDriver, leagueConfig = null) {
+  const leagueId = leagueConfig?.id || null
+  const slots = leagueConfig?.prediction_slots || 10
+  const poleBonus = leagueConfig?.pole_bonus || false
+  const fastestLapEnabled = leagueConfig?.fastest_lap || false
+  const driverOfDayEnabled = leagueConfig?.driver_of_day || false
+
+  // Fetch position predictions for this user/session/league
+  const userPredictions = await pool.query(
+    `SELECT position, driver_code, prediction_type 
+     FROM predictions 
+     WHERE user_id = $1 AND session_id = $2 
+     AND league_id IS NOT DISTINCT FROM $3
+     AND prediction_type = 'position'
+     ORDER BY position ASC`,
+    [userId, sessionId, leagueId]
+  )
+
+  let totalPoints = 0
+
+  // Score each position prediction
+  for (const prediction of userPredictions.rows) {
+    // Only score positions within this league's slot count
+    if (prediction.position > slots) continue
+
+    const actualPosition = driverCodeToPosition[prediction.driver_code]
+    if (actualPosition !== undefined) {
+      const points = calculatePoints(prediction.position, actualPosition)
+      totalPoints += points
+
+      // Pole position bonus — extra points for correctly predicting P1 in qualifying
+      if (poleBonus && prediction.position === 1 && actualPosition === 1) {
+        totalPoints += POLE_BONUS
+      }
+    }
+  }
+
+  // Score fastest lap bonus prediction if enabled for this league
+  if (fastestLapEnabled && fastestLapDriver) {
+    const flPrediction = await pool.query(
+      `SELECT driver_code FROM predictions 
+       WHERE user_id = $1 AND session_id = $2 
+       AND league_id IS NOT DISTINCT FROM $3
+       AND prediction_type = 'fastest_lap'`,
+      [userId, sessionId, leagueId]
+    )
+    if (flPrediction.rows.length > 0 && flPrediction.rows[0].driver_code === fastestLapDriver) {
+      totalPoints += FASTEST_LAP_BONUS
+    }
+  }
+
+  // Score driver of the day bonus prediction if enabled for this league
+  if (driverOfDayEnabled) {
+    const dodPrediction = await pool.query(
+      `SELECT driver_code FROM predictions 
+       WHERE user_id = $1 AND session_id = $2 
+       AND league_id IS NOT DISTINCT FROM $3
+       AND prediction_type = 'driver_of_day'`,
+      [userId, sessionId, leagueId]
+    )
+    // Driver of day must be manually confirmed — skip scoring if not set
+    // This is handled separately when results are confirmed
+  }
+
+  // Store the score, updating if it already exists
+  await pool.query(
+    `INSERT INTO scores (user_id, session_id, points, league_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, session_id, league_id) DO UPDATE SET points = $3`,
+    [userId, sessionId, totalPoints, leagueId]
+  )
+
+  return totalPoints
+}
+
+// Main scoring function
+// Scores all global predictions and all per-league predictions for a session
+export async function scoreSession(sessionId, fastestLapDriver = null) {
   const pool = getPool()
 
-  // Get the session from our database to find the OpenF1 session key
+  // Get the session
   const sessionResult = await pool.query(
     'SELECT * FROM sessions WHERE id = $1',
     [sessionId]
@@ -39,17 +121,16 @@ export async function scoreSession(sessionId) {
     getDrivers(session.session_key),
   ])
 
-  // Build a map of driver code (e.g. NOR) to final position
+  // Build driver code to final position map
   const driverCodeToPosition = {}
   for (const result of results) {
-    // Find the matching driver to get their code
     const driver = drivers.find(d => d.driver_number === result.driver_number)
     if (driver) {
       driverCodeToPosition[driver.name_acronym] = result.position
     }
   }
 
-  // Store official results in the results table
+  // Store official results
   for (const [code, position] of Object.entries(driverCodeToPosition)) {
     await pool.query(
       `INSERT INTO results (session_id, position, driver_code)
@@ -61,44 +142,44 @@ export async function scoreSession(sessionId) {
 
   // Get all users who submitted predictions for this session
   const predictionsResult = await pool.query(
-    'SELECT DISTINCT user_id FROM predictions WHERE session_id = $1',
+    'SELECT DISTINCT user_id, league_id FROM predictions WHERE session_id = $1',
     [sessionId]
   )
 
   const scoreSummary = []
 
-  // Calculate and store score for each user
-  for (const { user_id } of predictionsResult.rows) {
-    // Get this user's predictions for the session
-    const userPredictions = await pool.query(
-      'SELECT position, driver_code FROM predictions WHERE user_id = $1 AND session_id = $2',
-      [user_id, sessionId]
-    )
+  // Get all unique user/league combinations
+  const scored = new Set()
 
-    let totalPoints = 0
+  for (const { user_id, league_id } of predictionsResult.rows) {
+    const key = `${user_id}-${league_id}`
+    if (scored.has(key)) continue
+    scored.add(key)
 
-    // Score each prediction against the actual result
-    for (const prediction of userPredictions.rows) {
-      const actualPosition = driverCodeToPosition[prediction.driver_code]
+    let leagueConfig = null
 
-      // Only score if the driver actually finished in the top 10
-      if (actualPosition !== undefined) {
-        totalPoints += calculatePoints(prediction.position, actualPosition)
-      }
+    if (league_id) {
+      // Fetch league settings for per-league scoring
+      const leagueResult = await pool.query(
+        'SELECT * FROM leagues WHERE id = $1',
+        [league_id]
+      )
+      leagueConfig = leagueResult.rows[0] || null
     }
 
-    // Store the score in the database, updating if it already exists
-    await pool.query(
-      `INSERT INTO scores (user_id, session_id, points)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, session_id) DO UPDATE SET points = $3`,
-      [user_id, sessionId, totalPoints]
+    const points = await scoreUserPredictions(
+      pool,
+      user_id,
+      sessionId,
+      driverCodeToPosition,
+      fastestLapDriver,
+      leagueConfig
     )
 
-    scoreSummary.push({ user_id, points: totalPoints })
+    scoreSummary.push({ user_id, league_id, points })
   }
 
-  // Mark the session as completed
+  // Mark session as completed
   await pool.query(
     'UPDATE sessions SET completed = true WHERE id = $1',
     [sessionId]

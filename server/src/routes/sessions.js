@@ -9,14 +9,14 @@ const router = express.Router()
 // In production this would be called automatically after a session ends
 router.post('/:id/score', authMiddleware, async (req, res) => {
   try {
-    const summary = await scoreSession(req.params.id)
+    const { fastest_lap_driver } = req.body
+    const summary = await scoreSession(req.params.id, fastest_lap_driver || null)
     res.json({ message: 'Session scored successfully', scores: summary })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: err.message })
   }
 })
-
 
 // ── Get all sessions ──────────────────────────────────────────────────────────
 // Returns all race weekend sessions ordered by scheduled date ascending
