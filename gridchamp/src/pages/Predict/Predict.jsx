@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { sessionAPI, predictionAPI } from '../../services/api'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { sessionAPI, predictionAPI, leagueAPI } from '../../services/api'
 import styles from './Predict.module.css'
 
-// Full 2025 F1 driver list with team colours for visual identification
-// TODO: fetch driver list dynamically from OpenF1 API
+// 2026 F1 driver list with team colours
+// TODO: fetch dynamically from OpenF1 API once session keys are available
 const drivers = [
   { id: 1, code: 'VER', name: 'Verstappen', team: 'Red Bull Racing', colour: '#3671C6' },
   { id: 2, code: 'NOR', name: 'Norris', team: 'McLaren', colour: '#FF8000' },
@@ -28,43 +28,76 @@ const drivers = [
   { id: 20, code: 'LAW', name: 'Lawson', team: 'Racing Bulls', colour: '#6692FF' },
 ]
 
-const POSITIONS = 10
-
 function Predict() {
   const { sessionId } = useParams()
+  const [searchParams] = useSearchParams()
+  const leagueId = searchParams.get('league_id')
   const navigate = useNavigate()
 
   const [session, setSession] = useState(null)
-  const [predictions, setPredictions] = useState(Array(POSITIONS).fill(null))
+  const [league, setLeague] = useState(null)
+  const [positions, setPositions] = useState(10)
+  const [predictions, setPredictions] = useState(Array(10).fill(null))
+  const [fastestLapPick, setFastestLapPick] = useState(null)
+  const [driverOfDayPick, setDriverOfDayPick] = useState(null)
   const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  // Load session info and any existing predictions
   useEffect(() => {
     async function load() {
       try {
-        const [sessionData, existingPredictions] = await Promise.all([
-          sessionAPI.getOne(sessionId),
-          predictionAPI.getForSession(sessionId),
-        ])
-
+        // Always fetch session
+        const sessionData = await sessionAPI.getOne(sessionId)
         setSession(sessionData)
 
-        // If user has already submitted predictions, pre-fill the slots
-        if (existingPredictions.length > 0) {
-          const filled = Array(POSITIONS).fill(null)
-          for (const pred of existingPredictions) {
-            const driver = drivers.find(d => d.code === pred.driver_code)
-            if (driver && pred.position <= POSITIONS) {
-              filled[pred.position - 1] = driver
-            }
-          }
-          setPredictions(filled)
-          setAlreadySubmitted(true)
+        // If league_id in URL, fetch league settings
+        let leagueData = null
+        let slots = 10
+
+        if (leagueId) {
+          leagueData = await leagueAPI.getOne(leagueId)
+          setLeague(leagueData)
+          slots = leagueData.prediction_slots || 10
+          setPositions(slots)
         }
+
+        // Fetch existing predictions for this session/league combo
+        const existingPredictions = await predictionAPI.getForSession(
+          sessionId,
+          leagueId ? parseInt(leagueId) : null
+        )
+
+        if (existingPredictions.length > 0) {
+          const positionPredictions = existingPredictions.filter(p => p.prediction_type === 'position')
+          const flPrediction = existingPredictions.find(p => p.prediction_type === 'fastest_lap')
+          const dodPrediction = existingPredictions.find(p => p.prediction_type === 'driver_of_day')
+
+          if (positionPredictions.length > 0) {
+            const filled = Array(slots).fill(null)
+            for (const pred of positionPredictions) {
+              const driver = drivers.find(d => d.code === pred.driver_code)
+              if (driver && pred.position <= slots) {
+                filled[pred.position - 1] = driver
+              }
+            }
+            setPredictions(filled)
+            setAlreadySubmitted(true)
+          }
+
+          if (flPrediction) {
+            const driver = drivers.find(d => d.code === flPrediction.driver_code)
+            if (driver) setFastestLapPick(driver)
+          }
+
+          if (dodPrediction) {
+            const driver = drivers.find(d => d.code === dodPrediction.driver_code)
+            if (driver) setDriverOfDayPick(driver)
+          }
+        }
+
       } catch (err) {
         setError('Failed to load session')
       } finally {
@@ -72,7 +105,12 @@ function Predict() {
       }
     }
     load()
-  }, [sessionId])
+  }, [sessionId, leagueId])
+
+  // Reset predictions array when positions count changes
+  useEffect(() => {
+    setPredictions(Array(positions).fill(null))
+  }, [positions])
 
   const assignedIds = predictions.filter(Boolean).map(d => d.id)
 
@@ -92,12 +130,17 @@ function Predict() {
     if (predictions.some(p => p === null)) return
     setSubmitting(true)
     try {
-      // Format predictions for the API
       const payload = predictions.map((driver, i) => ({
         position: i + 1,
         driver_code: driver.code,
       }))
-      await predictionAPI.submit(sessionId, payload)
+
+      const options = {}
+      if (leagueId) options.league_id = parseInt(leagueId)
+      if (fastestLapPick) options.fastest_lap = fastestLapPick.code
+      if (driverOfDayPick) options.driver_of_day = driverOfDayPick.code
+
+      await predictionAPI.submit(sessionId, payload, options)
       setSubmitted(true)
     } catch (err) {
       setError(err.message)
@@ -107,6 +150,7 @@ function Predict() {
   }
 
   const allFilled = predictions.every(p => p !== null)
+  const backLink = leagueId ? '/leagues' : '/dashboard'
 
   if (loading) {
     return (
@@ -130,8 +174,13 @@ function Predict() {
         <div className={styles.successBox}>
           <div className={styles.successIcon}>✓</div>
           <h2>Predictions submitted!</h2>
-          <p>Your predictions for {session?.session_type} — {session?.race_name} have been locked in.</p>
-          <Link to="/dashboard" className={styles.btnPrimary}>Back to dashboard</Link>
+          <p>
+            Your {leagueId ? `${league?.name} league ` : 'global '}
+            predictions for {session?.session_type} — {session?.race_name} have been locked in.
+          </p>
+          <Link to={backLink} className={styles.btnPrimary}>
+            {leagueId ? 'Back to leagues' : 'Back to dashboard'}
+          </Link>
         </div>
       </div>
     )
@@ -141,24 +190,31 @@ function Predict() {
     <div className={styles.page}>
       <div className={styles.inner}>
 
-        {/* Session header with back link and session details */}
         <div className={styles.sessionHeader}>
-          <Link to="/dashboard" className={styles.back}>← Dashboard</Link>
+          <Link to={backLink} className={styles.back}>
+            ← {leagueId ? 'Leagues' : 'Dashboard'}
+          </Link>
           <div className={styles.sessionInfo}>
             <div>
-              <h1>{session?.race_name} <span>— {session?.session_type}</span></h1>
-              <p>Round {session?.round} · {new Date(session?.scheduled_at).toLocaleString()} · Predict the top {POSITIONS} positions</p>
+              <h1>
+                {session?.race_name} <span>— {session?.session_type}</span>
+              </h1>
+              <p>
+                Round {session?.round} · {new Date(session?.scheduled_at).toLocaleString()}
+                {leagueId && league
+                  ? ` · ${league.name} · Top ${positions}`
+                  : ` · Global · Top ${positions}`}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Two column layout */}
         <div className={styles.grid}>
 
-          {/* Left column - prediction slots */}
           <div className={styles.predictionSection}>
             <h2>Your predictions</h2>
             <p className={styles.hint}>Select a driver from the panel for each position</p>
+
             <div className={styles.slots}>
               {predictions.map((driver, i) => (
                 <div key={i} className={`${styles.slot} ${driver ? styles.slotFilled : styles.slotEmpty}`}>
@@ -178,23 +234,58 @@ function Predict() {
               ))}
             </div>
 
-            {/* Submit button */}
+            {/* Bonus predictions — only shown for league predictions with those settings enabled */}
+            {leagueId && league?.fastest_lap && (
+              <div className={styles.bonusSection}>
+                <h3>Fastest lap</h3>
+                <p className={styles.hint}>Which driver sets the fastest lap?</p>
+                <select
+                  className={styles.bonusSelect}
+                  value={fastestLapPick?.code || ''}
+                  onChange={e => setFastestLapPick(drivers.find(d => d.code === e.target.value) || null)}
+                  disabled={alreadySubmitted}
+                >
+                  <option value=''>Select a driver</option>
+                  {drivers.map(d => (
+                    <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {leagueId && league?.driver_of_day && (
+              <div className={styles.bonusSection}>
+                <h3>Driver of the day</h3>
+                <p className={styles.hint}>Which driver wins driver of the day?</p>
+                <select
+                  className={styles.bonusSelect}
+                  value={driverOfDayPick?.code || ''}
+                  onChange={e => setDriverOfDayPick(drivers.find(d => d.code === e.target.value) || null)}
+                  disabled={alreadySubmitted}
+                >
+                  <option value=''>Select a driver</option>
+                  {drivers.map(d => (
+                    <option key={d.code} value={d.code}>{d.code} — {d.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
-            className={`${styles.btnSubmit} ${!allFilled || submitting || alreadySubmitted ? styles.btnDisabled : ''}`}
-            onClick={handleSubmit}
-            disabled={!allFilled || submitting || alreadySubmitted}
+              className={`${styles.btnSubmit} ${!allFilled || submitting || alreadySubmitted ? styles.btnDisabled : ''}`}
+              onClick={handleSubmit}
+              disabled={!allFilled || submitting || alreadySubmitted}
             >
               {submitting
-              ? 'Submitting...'
-              : alreadySubmitted
-              ? 'Predictions already submitted'
-              : allFilled
-              ? 'Submit predictions'
-              : `${predictions.filter(Boolean).length} / ${POSITIONS} positions filled`}
+                ? 'Submitting...'
+                : alreadySubmitted
+                ? 'Predictions already submitted'
+                : allFilled
+                ? 'Submit predictions'
+                : `${predictions.filter(Boolean).length} / ${positions} positions filled`}
             </button>
           </div>
 
-          {/* Right column - driver panel */}
           <div className={styles.driverPanel}>
             <h2>Drivers</h2>
             <p className={styles.hint}>{drivers.length - assignedIds.length} remaining</p>
