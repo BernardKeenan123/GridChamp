@@ -58,7 +58,119 @@
   padding: 0.5rem 1.25rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  colo.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  background-color: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 100;
+}
+
+.inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  height: 100%;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.logo {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  letter-spacing: -0.5px;
   color: var(--color-text-primary);
+  flex-shrink: 0;
+}
+
+.logo span {
+  color: var(--color-primary);
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.links a {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.links a:hover,
+.active {
+  color: var(--color-text-primary) !important;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btnOutline {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: border-color 0.2s;
+  white-space: nowrap;
+}
+
+.btnOutline:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.btnPrimary {
+  padding: 0.4rem 0.75rem;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btnPrimary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.username {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .links {
+    gap: 0.6rem;
+  }
+
+  .links a {
+    font-size: 0.75rem;
+  }
+
+  .logo {
+    font-size: var(--font-size-base);
+  }
+}r: var(--color-text-primary);
   font-size: var(--font-size-sm);
   font-weight: 500;
   transition: border-color 0.2s;

@@ -252,3 +252,48 @@
 .viewAll:hover {
   color: var(--color-text-primary);
 }
+
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .header h1 {
+    font-size: var(--font-size-2xl);
+  }
+
+  .headerStats {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .stat {
+    flex: 1;
+    min-width: unset;
+    padding: 0.75rem 1rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sessionCard {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .sessionLeft {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sessionRace {
+    font-size: var(--font-size-sm);
+  }
+}
