@@ -5,12 +5,12 @@ import authMiddleware from '../middleware/auth.js'
 const router = express.Router()
 
 // ── Submit predictions for a session ─────────────────────────────────────────
-// Accepts an array of predictions and stores them in the database
-// Deletes any existing predictions for this user/session before inserting new ones
-// so users can update their predictions before the session locks
+// Accepts an array of predictions and an optional league_id
+// If league_id is provided, predictions are stored for that league
+// If no league_id, predictions are global (null league_id)
 router.post('/:sessionId', authMiddleware, async (req, res) => {
   const { sessionId } = req.params
-  const { predictions } = req.body
+  const { predictions, league_id, fastest_lap, driver_of_day } = req.body
 
   // Validate that predictions array was provided
   if (!predictions || !Array.isArray(predictions)) {
@@ -20,7 +20,7 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
 
-    // Check session exists and is not locked
+    // Check session exists
     const session = await pool.query(
       'SELECT * FROM sessions WHERE id = $1',
       [sessionId]
@@ -30,21 +30,55 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Session not found' })
     }
 
-    if (session.rows[0].locked) {
-      return res.status(400).json({ error: 'Session is locked' })
+    // Check prediction window using scheduled_at time
+    const now = new Date()
+    const sessionTime = new Date(session.rows[0].scheduled_at)
+    if (now > sessionTime) {
+      return res.status(400).json({ error: 'Predictions are closed for this session' })
     }
 
-    // Delete existing predictions for this user/session before inserting new ones
+    // If league_id provided, verify the user is a member of that league
+    if (league_id) {
+      const membership = await pool.query(
+        'SELECT * FROM league_members WHERE league_id = $1 AND user_id = $2',
+        [league_id, req.userId]
+      )
+      if (membership.rows.length === 0) {
+        return res.status(403).json({ error: 'You are not a member of this league' })
+      }
+    }
+
+    // Delete existing predictions for this user/session/league before inserting
+    // This allows users to update predictions before the session locks
     await pool.query(
-      'DELETE FROM predictions WHERE user_id = $1 AND session_id = $2',
-      [req.userId, sessionId]
+      'DELETE FROM predictions WHERE user_id = $1 AND session_id = $2 AND league_id IS NOT DISTINCT FROM $3',
+      [req.userId, sessionId, league_id || null]
     )
 
-    // Insert each prediction into the database
+    // Insert each position prediction
     for (const prediction of predictions) {
       await pool.query(
-        'INSERT INTO predictions (user_id, session_id, position, driver_code) VALUES ($1, $2, $3, $4)',
-        [req.userId, sessionId, prediction.position, prediction.driver_code]
+        `INSERT INTO predictions (user_id, session_id, position, driver_code, league_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [req.userId, sessionId, prediction.position, prediction.driver_code, league_id || null]
+      )
+    }
+
+    // Insert fastest lap prediction if provided
+    if (fastest_lap) {
+      await pool.query(
+        `INSERT INTO predictions (user_id, session_id, position, driver_code, league_id, prediction_type)
+         VALUES ($1, $2, NULL, $3, $4, 'fastest_lap')`,
+        [req.userId, sessionId, fastest_lap, league_id || null]
+      )
+    }
+
+    // Insert driver of the day prediction if provided
+    if (driver_of_day) {
+      await pool.query(
+        `INSERT INTO predictions (user_id, session_id, position, driver_code, league_id, prediction_type)
+         VALUES ($1, $2, NULL, $3, $4, 'driver_of_day')`,
+        [req.userId, sessionId, driver_of_day, league_id || null]
       )
     }
 
@@ -56,15 +90,20 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
 })
 
 // ── Get user's predictions for a session ─────────────────────────────────────
-// Returns the logged in user's predictions for a specific session
-// Used on the predict page to show existing predictions if the user has already submitted
+// Returns predictions for a specific session, optionally filtered by league
+// If no league_id query param, returns global predictions
 router.get('/:sessionId', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
+    const { league_id } = req.query
 
     const result = await pool.query(
-      'SELECT * FROM predictions WHERE user_id = $1 AND session_id = $2 ORDER BY position ASC',
-      [req.userId, req.params.sessionId]
+      `SELECT * FROM predictions 
+       WHERE user_id = $1 
+       AND session_id = $2 
+       AND league_id IS NOT DISTINCT FROM $3
+       ORDER BY position ASC NULLS LAST`,
+      [req.userId, req.params.sessionId, league_id ? parseInt(league_id) : null]
     )
 
     res.json(result.rows)

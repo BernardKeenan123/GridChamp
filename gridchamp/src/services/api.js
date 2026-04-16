@@ -60,12 +60,17 @@ export const sessionAPI = {
 // ── Predictions ───────────────────────────────────────────────────────────────
 
 export const predictionAPI = {
-  submit: (sessionId, predictions) =>
+  // Submit predictions for a session
+  // options can include league_id, fastest_lap, driver_of_day
+  submit: (sessionId, predictions, options = {}) =>
     request(`/api/predictions/${sessionId}`, {
       method: 'POST',
-      body: JSON.stringify({ predictions }),
+      body: JSON.stringify({ predictions, ...options }),
     }),
-  getForSession: (sessionId) => request(`/api/predictions/${sessionId}`),
+
+  // Get predictions for a session, optionally filtered by league
+  getForSession: (sessionId, leagueId = null) =>
+    request(`/api/predictions/${sessionId}${leagueId ? `?league_id=${leagueId}` : ''}`),
 }
 
 // ── Scores ────────────────────────────────────────────────────────────────────
@@ -79,16 +84,18 @@ export const scoreAPI = {
 
 export const leaderboardAPI = {
   getGlobal: () => request('/api/leaderboard'),
+  getFriends: () => request('/api/leaderboard/friends'),
 }
 
 // ── Leagues ───────────────────────────────────────────────────────────────────
 
 export const leagueAPI = {
   getMyLeagues: () => request('/api/leagues/me'),
-  create: (name) =>
+  getOne: (id) => request(`/api/leagues/${id}`),
+  create: (name, settings = {}) =>
     request('/api/leagues', {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, ...settings }),
     }),
   join: (code) =>
     request('/api/leagues/join', {
@@ -96,4 +103,9 @@ export const leagueAPI = {
       body: JSON.stringify({ code }),
     }),
   getStandings: (id) => request(`/api/leagues/${id}/standings`),
+  updateSettings: (id, settings) =>
+    request(`/api/leagues/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    }),
 }
