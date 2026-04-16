@@ -260,3 +260,120 @@
 }
 
 .userPoints { color: var(--color-primary); }
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.settingDesc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.slotOptions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.slotBtn {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.slotBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.slotBtnActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.toggleList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.toggleLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.toggleDesc {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.toggle {
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  min-width: 52px;
+  transition: all 0.15s;
+}
+
+.toggleOn {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.leagueSettings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.leagueSettings span {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}

@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext'
 import { leagueAPI } from '../../services/api'
 import styles from './Leagues.module.css'
 
+const SLOT_OPTIONS = [3, 5, 10, 20]
+
 function Leagues() {
   const { user } = useAuth()
   const [myLeagues, setMyLeagues] = useState([])
@@ -10,17 +12,23 @@ function Leagues() {
   const [standings, setStandings] = useState([])
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
-  const [newLeagueName, setNewLeagueName] = useState('')
-  const [joinCode, setJoinCode] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Load user's leagues on mount
+  // Create form state
+  const [newLeagueName, setNewLeagueName] = useState('')
+  const [predictionSlots, setPredictionSlots] = useState(10)
+  const [fastestLap, setFastestLap] = useState(false)
+  const [driverOfDay, setDriverOfDay] = useState(false)
+  const [poleBonus, setPoleBonus] = useState(false)
+
+  // Join form state
+  const [joinCode, setJoinCode] = useState('')
+
   useEffect(() => {
     loadLeagues()
   }, [])
 
-  // Load standings when active league changes
   useEffect(() => {
     if (activeLeague) {
       loadStandings(activeLeague.id)
@@ -51,8 +59,17 @@ function Leagues() {
   async function handleCreate() {
     if (!newLeagueName.trim()) return
     try {
-      await leagueAPI.create(newLeagueName)
+      await leagueAPI.create(newLeagueName, {
+        prediction_slots: predictionSlots,
+        fastest_lap: fastestLap,
+        driver_of_day: driverOfDay,
+        pole_bonus: poleBonus,
+      })
       setNewLeagueName('')
+      setPredictionSlots(10)
+      setFastestLap(false)
+      setDriverOfDay(false)
+      setPoleBonus(false)
       setShowCreate(false)
       await loadLeagues()
     } catch (err) {
@@ -84,7 +101,6 @@ function Leagues() {
     <div className={styles.page}>
       <div className={styles.inner}>
 
-        {/* Page header */}
         <div className={styles.header}>
           <div>
             <h1>Mini leagues</h1>
@@ -100,7 +116,6 @@ function Leagues() {
           </div>
         </div>
 
-        {/* Error message */}
         {error && (
           <div style={{ color: 'var(--color-primary)', marginBottom: '1rem', fontSize: 'var(--font-size-sm)' }}>
             {error}
@@ -111,17 +126,84 @@ function Leagues() {
         {showCreate && (
           <div className={styles.formCard}>
             <h3>Create a new league</h3>
-            <p>Share the generated code with friends so they can join.</p>
-            <div className={styles.formRow}>
+            <p>Customise your league settings below. These can be updated later.</p>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>League name</label>
               <input
                 type="text"
-                placeholder="League name"
+                placeholder="e.g. The Paddock"
                 value={newLeagueName}
                 onChange={e => setNewLeagueName(e.target.value)}
                 className={styles.input}
               />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Positions to predict</label>
+              <p className={styles.settingDesc}>How many finishing positions members must predict per session.</p>
+              <div className={styles.slotOptions}>
+                {SLOT_OPTIONS.map(n => (
+                  <button
+                    key={n}
+                    className={`${styles.slotBtn} ${predictionSlots === n ? styles.slotBtnActive : ''}`}
+                    onClick={() => setPredictionSlots(n)}
+                  >
+                    Top {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Bonus predictions</label>
+              <p className={styles.settingDesc}>Optional extra predictions members can make each session.</p>
+              <div className={styles.toggleList}>
+                <div className={styles.toggleRow}>
+                  <div>
+                    <span className={styles.toggleLabel}>Fastest lap</span>
+                    <span className={styles.toggleDesc}>Predict which driver sets the fastest lap of the race</span>
+                  </div>
+                  <button
+                    className={`${styles.toggle} ${fastestLap ? styles.toggleOn : ''}`}
+                    onClick={() => setFastestLap(!fastestLap)}
+                  >
+                    {fastestLap ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <div className={styles.toggleRow}>
+                  <div>
+                    <span className={styles.toggleLabel}>Driver of the day</span>
+                    <span className={styles.toggleDesc}>Predict which driver wins driver of the day</span>
+                  </div>
+                  <button
+                    className={`${styles.toggle} ${driverOfDay ? styles.toggleOn : ''}`}
+                    onClick={() => setDriverOfDay(!driverOfDay)}
+                  >
+                    {driverOfDay ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <div className={styles.toggleRow}>
+                  <div>
+                    <span className={styles.toggleLabel}>Pole position bonus</span>
+                    <span className={styles.toggleDesc}>Correctly predicting P1 in qualifying earns bonus points</span>
+                  </div>
+                  <button
+                    className={`${styles.toggle} ${poleBonus ? styles.toggleOn : ''}`}
+                    onClick={() => setPoleBonus(!poleBonus)}
+                  >
+                    {poleBonus ? 'On' : 'Off'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.formActions}>
+              <button className={styles.btnOutline} onClick={() => setShowCreate(false)}>
+                Cancel
+              </button>
               <button className={styles.btnPrimary} onClick={handleCreate}>
-                Create
+                Create league
               </button>
             </div>
           </div>
@@ -154,7 +236,6 @@ function Leagues() {
         ) : (
           <div className={styles.grid}>
 
-            {/* League list */}
             <div className={styles.leagueList}>
               <h2>Your leagues</h2>
               {myLeagues.map(league => (
@@ -170,11 +251,16 @@ function Leagues() {
                     <span>{league.member_count} members</span>
                     <span>Code: <strong>{league.code}</strong></span>
                   </div>
+                  <div className={styles.leagueSettings}>
+                    <span>Top {league.prediction_slots}</span>
+                    {league.fastest_lap && <span>Fastest lap</span>}
+                    {league.driver_of_day && <span>Driver of day</span>}
+                    {league.pole_bonus && <span>Pole bonus</span>}
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Standings panel */}
             {activeLeague && (
               <div className={styles.standingsPanel}>
                 <div className={styles.standingsHeader}>
