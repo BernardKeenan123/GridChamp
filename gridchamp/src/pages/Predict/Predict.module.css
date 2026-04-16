@@ -343,4 +343,10 @@
   font-size: var(--font-size-sm);
   font-family: inherit;
   margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.bonusSelect option {
+  background: #1a1a1a;
+  color: #ffffff;
 }
