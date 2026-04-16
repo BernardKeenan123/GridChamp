@@ -3,17 +3,24 @@ import { useAuth } from '../../context/AuthContext'
 import { leaderboardAPI } from '../../services/api'
 import styles from './Leaderboard.module.css'
 
+const TABS = ['global', 'friends']
+
 function Leaderboard() {
   const { user } = useAuth()
-  const [standings, setStandings] = useState([])
+  const [activeTab, setActiveTab] = useState('global')
+  const [globalStandings, setGlobalStandings] = useState([])
+  const [friendsStandings, setFriendsStandings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeRound, setActiveRound] = useState('all')
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await leaderboardAPI.getGlobal()
-        setStandings(data)
+        const [global, friends] = await Promise.all([
+          leaderboardAPI.getGlobal(),
+          leaderboardAPI.getFriends(),
+        ])
+        setGlobalStandings(global)
+        setFriendsStandings(friends)
       } catch (err) {
         console.error('Failed to load leaderboard:', err)
       } finally {
@@ -23,8 +30,8 @@ function Leaderboard() {
     load()
   }, [])
 
-  // Find current user's rank
-  const userRank = standings.findIndex(s => s.id === user.id) + 1
+  const standings = activeTab === 'global' ? globalStandings : friendsStandings
+  const userRank = globalStandings.findIndex(s => s.id === user.id) + 1
 
   if (loading) {
     return (
@@ -38,11 +45,10 @@ function Leaderboard() {
     <div className={styles.page}>
       <div className={styles.inner}>
 
-        {/* Page header */}
         <div className={styles.header}>
           <div>
-            <h1>Global leaderboard</h1>
-            <p>Rankings across all {standings.length} participants</p>
+            <h1>Leaderboard</h1>
+            <p>Rankings across all {globalStandings.length} participants</p>
           </div>
           <div className={styles.yourRank}>
             <span className={styles.yourRankValue}>#{userRank || '-'}</span>
@@ -50,38 +56,57 @@ function Leaderboard() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className={styles.tableWrapper}>
-          <div className={styles.tableHeader}>
-            <span>Rank</span>
-            <span>Player</span>
-            <span>Predictions</span>
-            <span>Points</span>
-          </div>
-
-          {standings.map((row, index) => {
-            const rank = index + 1
-            const isUser = row.id === user.id
-            return (
-              <div
-                key={row.id}
-                className={`${styles.tableRow} ${isUser ? styles.userRow : ''}`}
-              >
-                <span className={styles.rank}>
-                  {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
-                </span>
-                <span className={`${styles.username} ${isUser ? styles.userHighlight : ''}`}>
-                  {row.username}
-                  {isUser && <span className={styles.youTag}>You</span>}
-                </span>
-                <span className={styles.cell}>{row.predictions_made}</span>
-                <span className={`${styles.cell} ${styles.points} ${isUser ? styles.userPoints : ''}`}>
-                  {row.total_points}
-                </span>
-              </div>
-            )
-          })}
+        {/* Tabs */}
+        <div className={styles.tabs}>
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === 'global' ? 'Global' : 'Friends'}
+            </button>
+          ))}
         </div>
+
+        {/* Empty state for friends tab */}
+        {activeTab === 'friends' && friendsStandings.length === 0 ? (
+          <p style={{ color: 'var(--color-text-secondary)' }}>
+            Join a league to see how your friends rank globally.
+          </p>
+        ) : (
+          <div className={styles.tableWrapper}>
+            <div className={styles.tableHeader}>
+              <span>Rank</span>
+              <span>Player</span>
+              <span>Predictions</span>
+              <span>Points</span>
+            </div>
+
+            {standings.map((row, index) => {
+              const rank = index + 1
+              const isUser = row.id === user.id
+              return (
+                <div
+                  key={row.id}
+                  className={`${styles.tableRow} ${isUser ? styles.userRow : ''}`}
+                >
+                  <span className={styles.rank}>
+                    {rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : `#${rank}`}
+                  </span>
+                  <span className={`${styles.username} ${isUser ? styles.userHighlight : ''}`}>
+                    {row.username}
+                    {isUser && <span className={styles.youTag}>You</span>}
+                  </span>
+                  <span className={styles.cell}>{row.predictions_made}</span>
+                  <span className={`${styles.cell} ${styles.points} ${isUser ? styles.userPoints : ''}`}>
+                    {row.total_points}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
       </div>
     </div>
