@@ -377,3 +377,58 @@
   border: 1px solid var(--color-border);
   color: var(--color-text-secondary);
 }
+
+.leagueSessions {
+  margin-top: 2rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1.5rem;
+}
+
+.leagueSessions h3 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.weekendGroup {
+  margin-bottom: 1rem;
+}
+
+.weekendName {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  margin-bottom: 0.4rem;
+}
+
+.sessionType {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.locked {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.btnPredict {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}

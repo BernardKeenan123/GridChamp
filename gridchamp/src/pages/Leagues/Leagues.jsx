@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { leagueAPI } from '../../services/api'
+import { leagueAPI, sessionAPI } from '../../services/api'
 import styles from './Leagues.module.css'
 
 const SLOT_OPTIONS = [3, 5, 10, 20]
@@ -10,6 +11,7 @@ function Leagues() {
   const [myLeagues, setMyLeagues] = useState([])
   const [activeLeague, setActiveLeague] = useState(null)
   const [standings, setStandings] = useState([])
+  const [sessions, setSessions] = useState([])
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -27,6 +29,7 @@ function Leagues() {
 
   useEffect(() => {
     loadLeagues()
+    loadSessions()
   }, [])
 
   useEffect(() => {
@@ -44,6 +47,15 @@ function Leagues() {
       console.error('Failed to load leagues:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadSessions() {
+    try {
+      const data = await sessionAPI.getAll()
+      setSessions(data.filter(s => !s.completed))
+    } catch (err) {
+      console.error('Failed to load sessions:', err)
     }
   }
 
@@ -88,6 +100,17 @@ function Leagues() {
       setError(err.message)
     }
   }
+
+  // Group sessions by race weekend
+  const weekends = Object.values(
+    sessions.reduce((groups, session) => {
+      if (!groups[session.race_name]) {
+        groups[session.race_name] = { race_name: session.race_name, round: session.round, sessions: [] }
+      }
+      groups[session.race_name].sessions.push(session)
+      return groups
+    }, {})
+  ).sort((a, b) => a.round - b.round)
 
   if (loading) {
     return (
@@ -268,6 +291,7 @@ function Leagues() {
                   <span className={styles.leagueCode}>Invite code: <strong>{activeLeague.code}</strong></span>
                 </div>
 
+                {/* Standings table */}
                 <div className={styles.tableWrapper}>
                   <div className={styles.tableHeader}>
                     <span>Rank</span>
@@ -296,6 +320,41 @@ function Leagues() {
                     )
                   })}
                 </div>
+
+                {/* Upcoming sessions for this league */}
+                <div className={styles.leagueSessions}>
+                  <h3>Upcoming sessions</h3>
+                  {weekends.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                      No upcoming sessions.
+                    </p>
+                  ) : (
+                    weekends.map(weekend => (
+                      <div key={weekend.race_name} className={styles.weekendGroup}>
+                        <span className={styles.weekendName}>{weekend.race_name}</span>
+                        {weekend.sessions.map(session => {
+                          const isLocked = new Date(session.scheduled_at) < new Date()
+                          return (
+                            <div key={session.id} className={styles.sessionRow}>
+                              <span className={styles.sessionType}>{session.session_type}</span>
+                              {isLocked ? (
+                                <span className={styles.locked}>Locked</span>
+                              ) : (
+                                <Link
+                                  to={`/predict/${session.id}?league_id=${activeLeague.id}`}
+                                  className={styles.btnPredict}
+                                >
+                                  Predict
+                                </Link>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))
+                  )}
+                </div>
+
               </div>
             )}
           </div>

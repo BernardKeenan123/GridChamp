@@ -31,25 +31,21 @@ router.get('/', authMiddleware, async (req, res) => {
 router.get('/friends', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
-
+    
     const result = await pool.query(
-      `SELECT DISTINCT u.id, u.username,
-       COALESCE(SUM(s.points), 0) as total_points,
-       COUNT(DISTINCT p.session_id) as predictions_made
-       FROM users u
-       -- Find users who share at least one league with the current user
-       JOIN league_members lm ON lm.user_id = u.id
-       JOIN league_members my_leagues 
-         ON my_leagues.league_id = lm.league_id 
-         AND my_leagues.user_id = $1
-       -- Get their global scores only
-       LEFT JOIN scores s ON s.user_id = u.id AND s.league_id IS NULL
-       LEFT JOIN predictions p ON p.user_id = u.id AND p.league_id IS NULL
-       -- Exclude the current user from the results
-       WHERE u.id != $1
-       GROUP BY u.id, u.username
-       ORDER BY total_points DESC`,
-      [req.userId]
+  `SELECT DISTINCT u.id, u.username,
+   COALESCE(SUM(s.points), 0) as total_points,
+   COUNT(DISTINCT p.session_id) as predictions_made
+   FROM users u
+   JOIN league_members lm ON lm.user_id = u.id
+   JOIN league_members my_leagues 
+     ON my_leagues.league_id = lm.league_id 
+     AND my_leagues.user_id = $1
+   LEFT JOIN scores s ON s.user_id = u.id AND s.league_id IS NULL
+   LEFT JOIN predictions p ON p.user_id = u.id AND p.league_id IS NULL
+   GROUP BY u.id, u.username
+   ORDER BY total_points DESC`,
+  [req.userId]
     )
 
     res.json(result.rows)
