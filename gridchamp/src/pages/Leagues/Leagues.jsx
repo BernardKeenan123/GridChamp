@@ -14,7 +14,6 @@ function Leagues() {
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [showJoin, setShowJoin] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,9 +30,6 @@ function Leagues() {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const searchTimeout = useRef(null);
-
-  // Join form state
-  const [joinCode, setJoinCode] = useState("");
 
   // Post-creation add member state
   const [addSearch, setAddSearch] = useState("");
@@ -197,18 +193,6 @@ function Leagues() {
     }
   }
 
-  async function handleJoin() {
-    if (!joinCode.trim()) return;
-    try {
-      await leagueAPI.join(joinCode);
-      setJoinCode("");
-      setShowJoin(false);
-      await loadLeagues();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
   async function handleAddMember(u) {
     setAddMemberError("");
     setAddMemberSuccess("");
@@ -311,20 +295,8 @@ function Leagues() {
           </div>
           <div className={styles.headerActions}>
             <button
-              className={styles.btnOutline}
-              onClick={() => {
-                setShowJoin(true);
-                setShowCreate(false);
-              }}
-            >
-              Join a league
-            </button>
-            <button
               className={styles.btnPrimary}
-              onClick={() => {
-                setShowCreate(true);
-                setShowJoin(false);
-              }}
+              onClick={() => setShowCreate(true)}
             >
               Create league
             </button>
@@ -500,30 +472,9 @@ function Leagues() {
           </div>
         )}
 
-        {/* Join league form */}
-        {showJoin && (
-          <div className={styles.formCard}>
-            <h3>Join a league</h3>
-            <p>Enter the invite code shared by the league creator.</p>
-            <div className={styles.formRow}>
-              <input
-                type="text"
-                placeholder="Enter invite code"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                className={styles.input}
-              />
-              <button className={styles.btnPrimary} onClick={handleJoin}>
-                Join
-              </button>
-            </div>
-          </div>
-        )}
-
         {myLeagues.length === 0 ? (
           <p style={{ color: "var(--color-text-secondary)" }}>
-            You haven't joined any leagues yet. Create one or ask a league
-            creator to add you.
+            You haven't joined any leagues yet. Ask a league creator to add you.
           </p>
         ) : (
           <div className={styles.grid}>

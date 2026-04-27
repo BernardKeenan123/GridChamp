@@ -1,28 +1,25 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { sessionAPI, predictionAPI, scoreAPI } from "../../services/api";
+import {
+  sessionAPI,
+  predictionAPI,
+  scoreAPI,
+  leagueAPI,
+} from "../../services/api";
 import styles from "./Results.module.css";
 
-const POINTS = {
-  exact: 10,
-  oneOff: 6,
-  twoOff: 3,
-  inTop10: 1,
-};
+const F1_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
 
 function getScore(predictedCode, predictions, actualResults) {
   const pred = predictions.find((p) => p.driver_code === predictedCode);
   const actual = actualResults.find((r) => r.driver_code === predictedCode);
-
   if (!pred || !actual) return null;
-
-  const diff = Math.abs(pred.position - actual.position);
-  if (diff === 0)
-    return { points: POINTS.exact, label: "Exact", type: "exact" };
-  if (diff === 1) return { points: POINTS.oneOff, label: "±1", type: "close" };
-  if (diff === 2) return { points: POINTS.twoOff, label: "±2", type: "close" };
-  return { points: POINTS.inTop10, label: "In top 10", type: "partial" };
+  if (pred.position === actual.position) {
+    const points = F1_POINTS[actual.position - 1] || 0;
+    return { points, label: "Exact", type: "exact" };
+  }
+  return null;
 }
 
 const driverInfo = {
@@ -58,24 +55,20 @@ function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // League selector state
+  const [userLeagues, setUserLeagues] = useState([]);
+  const [selectedLeagueId, setSelectedLeagueId] = useState(null); // null = global
+
+  // Load session, actual results and user's leagues on mount
   useEffect(() => {
-    async function load() {
+    async function loadInitial() {
       try {
-        const [sessionData, predictionsData, scoresData] = await Promise.all([
+        const [sessionData, leaguesData] = await Promise.all([
           sessionAPI.getOne(sessionId),
-          predictionAPI.getForSession(sessionId),
-          scoreAPI.getSessionScores(sessionId),
+          leagueAPI.getMyLeagues(),
         ]);
-
         setSession(sessionData);
-
-        const positionPredictions = predictionsData
-          .filter((p) => p.prediction_type === "position")
-          .sort((a, b) => a.position - b.position);
-        setPredictions(positionPredictions);
-
-        const myScore = scoresData.find((s) => s.username === user.username);
-        if (myScore) setSessionScore(myScore.points);
+        setUserLeagues(leaguesData);
 
         const token = localStorage.getItem("token");
         const resultsResponse = await fetch(
@@ -87,6 +80,20 @@ function Results() {
           const resultsData = await resultsResponse.json();
           if (resultsData.results?.length > 0) {
             setActualResults(resultsData.results);
+
+            if (resultsData.source === "openf1") {
+              await fetch(
+                `${import.meta.env.VITE_API_URL}/api/sessions/${sessionId}/score`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({}),
+                },
+              );
+            }
           }
         }
       } catch (err) {
@@ -96,8 +103,31 @@ function Results() {
         setLoading(false);
       }
     }
-    load();
-  }, [sessionId, user.username]);
+    loadInitial();
+  }, [sessionId]);
+
+  // Reload predictions and score whenever selected league changes
+  useEffect(() => {
+    async function loadLeagueData() {
+      try {
+        const [predictionsData, scoresData] = await Promise.all([
+          predictionAPI.getForSession(sessionId, selectedLeagueId),
+          scoreAPI.getSessionScores(sessionId, selectedLeagueId),
+        ]);
+
+        const positionPredictions = predictionsData
+          .filter((p) => p.prediction_type === "position")
+          .sort((a, b) => a.position - b.position);
+        setPredictions(positionPredictions);
+
+        const myScore = scoresData.find((s) => s.username === user.username);
+        setSessionScore(myScore ? myScore.points : null);
+      } catch (err) {
+        console.error("Failed to load league data:", err);
+      }
+    }
+    if (sessionId) loadLeagueData();
+  }, [sessionId, selectedLeagueId, user.username]);
 
   const actualByPosition = {};
   for (const r of actualResults) {
@@ -147,6 +177,29 @@ function Results() {
           </div>
         </div>
 
+        {/* League selector */}
+        {userLeagues.length > 0 && (
+          <div className={styles.leagueSelector}>
+            <label className={styles.leagueSelectorLabel}>Viewing:</label>
+            <select
+              className={styles.leagueSelectorSelect}
+              value={selectedLeagueId ?? "global"}
+              onChange={(e) =>
+                setSelectedLeagueId(
+                  e.target.value === "global" ? null : parseInt(e.target.value),
+                )
+              }
+            >
+              <option value="global">Global predictions</option>
+              {userLeagues.map((league) => (
+                <option key={league.id} value={league.id}>
+                  {league.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {sessionScore !== null && (
           <div className={styles.scoreSummary}>
             <div className={styles.scoreMain}>
@@ -159,22 +212,22 @@ function Results() {
         <div className={styles.scoringKey}>
           <span className={styles.keyLabel}>Scoring:</span>
           <span className={styles.keyItem}>
-            <span className={`${styles.keyBadge} ${styles.exact}`}>Exact</span>{" "}
-            +10 pts
-          </span>
-          <span className={styles.keyItem}>
-            <span className={`${styles.keyBadge} ${styles.close}`}>±1</span> +6
+            <span className={`${styles.keyBadge} ${styles.exact}`}>P1</span> +25
             pts
           </span>
           <span className={styles.keyItem}>
-            <span className={`${styles.keyBadge} ${styles.close}`}>±2</span> +3
+            <span className={`${styles.keyBadge} ${styles.exact}`}>P2</span> +18
+            pts
+          </span>
+          <span className={styles.keyItem}>
+            <span className={`${styles.keyBadge} ${styles.exact}`}>P3</span> +15
             pts
           </span>
           <span className={styles.keyItem}>
             <span className={`${styles.keyBadge} ${styles.partial}`}>
-              In top 10
+              P4–P10
             </span>{" "}
-            +1 pt
+            12→1 pts
           </span>
         </div>
 
@@ -252,9 +305,9 @@ function Results() {
                       {score ? (
                         <>
                           <span
-                            className={`${styles.keyBadge} ${styles[score.type]}`}
+                            className={`${styles.keyBadge} ${styles.exact}`}
                           >
-                            {score.label}
+                            Exact
                           </span>
                           <span className={styles.pts}>+{score.points}</span>
                         </>

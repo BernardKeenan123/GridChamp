@@ -4,18 +4,14 @@ import authMiddleware from '../middleware/auth.js'
 
 const router = express.Router()
 
-// ── Get current user's total score ────────────────────────────────────────────
-// Returns the sum of all points earned by the logged in user across all sessions
+// Get current user's total score
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
-
     const result = await pool.query(
-      // COALESCE returns 0 instead of null if the user has no scores yet
-      'SELECT COALESCE(SUM(points), 0) as total FROM scores WHERE user_id = $1',
-      [req.userId] // req.userId is set by the auth middleware from the JWT token
+      'SELECT COALESCE(SUM(points), 0) as total FROM scores WHERE user_id = $1 AND league_id IS NULL',
+      [req.userId]
     )
-
     res.json({ total: result.rows[0].total })
   } catch (err) {
     console.error(err)
@@ -23,24 +19,33 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 })
 
-// ── Get all scores for a specific session ─────────────────────────────────────
-// Returns a ranked list of all users and their points for a given session
-// Used on the results page to show the session leaderboard
+// Get all scores for a specific session
+// Optionally filtered by league_id — defaults to global (league_id IS NULL)
 router.get('/session/:sessionId', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
+    const { league_id } = req.query
 
-    const result = await pool.query(
-      `SELECT s.points, u.username 
-       FROM scores s 
-       -- Join users table to get usernames alongside points
-       JOIN users u ON s.user_id = u.id 
-       WHERE s.session_id = $1 
-       -- Order by points descending to give ranked results
-       ORDER BY s.points DESC`,
-      [req.params.sessionId]
-    )
+    let query
+    let params
 
+    if (league_id) {
+      query = `SELECT s.points, u.username
+               FROM scores s
+               JOIN users u ON s.user_id = u.id
+               WHERE s.session_id = $1 AND s.league_id = $2
+               ORDER BY s.points DESC`
+      params = [req.params.sessionId, league_id]
+    } else {
+      query = `SELECT s.points, u.username
+               FROM scores s
+               JOIN users u ON s.user_id = u.id
+               WHERE s.session_id = $1 AND s.league_id IS NULL
+               ORDER BY s.points DESC`
+      params = [req.params.sessionId]
+    }
+
+    const result = await pool.query(query, params)
     res.json(result.rows)
   } catch (err) {
     console.error(err)

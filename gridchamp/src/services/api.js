@@ -59,7 +59,8 @@ export const predictionAPI = {
 
 export const scoreAPI = {
   getMyTotal: () => request('/api/scores/me'),
-  getSessionScores: (sessionId) => request(`/api/scores/session/${sessionId}`),
+  getSessionScores: (sessionId, leagueId = null) =>
+    request(`/api/scores/session/${sessionId}${leagueId ? `?league_id=${leagueId}` : ''}`),
 }
 
 export const leaderboardAPI = {
