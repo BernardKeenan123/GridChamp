@@ -1,68 +1,56 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import styles from './Auth.module.css'
-import { useAuth } from '../../context/AuthContext'
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import styles from "./Auth.module.css";
+import { useAuth } from "../../context/AuthContext";
 
 function Login() {
-  // Track email and password input values
-  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-  // Holds any error message to display to the user
-  const [error, setError] = useState('')
-
-  // Access the login function from auth context
-  const { login } = useAuth()
-
-  // Used to redirect the user after successful login
-  const navigate = useNavigate()
-
-  // Update form state on input change and clear any existing error
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-    setError('')
-  }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError("");
+  };
 
- const handleSubmit = async (e) => {
-  e.preventDefault()
-  try {
-    await login(formData.email, formData.password)
-    navigate('/dashboard')
-  } catch (err) {
-    setError(err.message)
-  }
-}
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await login(formData.username, formData.password);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-
-        {/* Header with logo and page title */}
         <div className={styles.header}>
-          <Link to="/" className={styles.logo}>Grid<span>Champ</span></Link>
+          <Link to="/" className={styles.logo}>
+            Grid<span>Champ</span>
+          </Link>
           <h1>Welcome back</h1>
           <p>Log in to your account to continue predicting</p>
         </div>
 
-        {/* Show error message if login fails */}
         {error && <div className={styles.error}>{error}</div>}
 
         <form className={styles.form} onSubmit={handleSubmit}>
-
-          {/* Email input field */}
           <div className={styles.field}>
-            <label htmlFor="email">Email address</label>
+            <label htmlFor="username">Username</label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="you@example.com"
+              placeholder="e.g. max_fan33"
               required
             />
           </div>
 
-          {/* Password input field */}
           <div className={styles.field}>
             <label htmlFor="password">Password</label>
             <input
@@ -81,13 +69,12 @@ function Login() {
           </button>
         </form>
 
-        {/* Link to registration page for new users */}
         <p className={styles.switch}>
           Don't have an account? <Link to="/register">Sign up</Link>
         </p>
       </div>
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;
