@@ -43,7 +43,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Score summary */
 .scoreSummary {
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border);
@@ -93,7 +92,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Scoring key */
 .scoringKey {
   display: flex;
   align-items: center;
@@ -123,7 +121,6 @@
   font-weight: 600;
 }
 
-/* Results table */
 .tableWrapper {
   background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border);
@@ -286,21 +283,7 @@
 
 @media (max-width: 768px) {
   .page {
-    padding: 1.25rem 1rem;
-  }
-
-  .tableHeader {
-    grid-template-columns: 40px 1fr 1fr 56px;
-    padding: 0.6rem 0.75rem;
-  }
-
-  .tableRow {
-    grid-template-columns: 40px 1fr 1fr 56px;
-    padding: 0.75rem 0.75rem;
-  }
-
-  .team {
-    display: none;
+    padding: 1.25rem 0.5rem;
   }
 
   .sessionInfo h1 {
@@ -320,6 +303,11 @@
     gap: 0.5rem;
   }
 
+  .keyBadge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+  }
+
   .leagueSelector {
     flex-direction: column;
     align-items: flex-start;
@@ -329,17 +317,51 @@
   .leagueSelectorSelect {
     width: 100%;
   }
-}
 
-@media (max-width: 768px) {
   .tableHeader {
-    grid-template-columns: 40px 1fr 1fr 70px;
-    padding: 0.6rem 0.75rem;
+    grid-template-columns: 36px 1fr 1fr 60px;
+    padding: 0.5rem 0.5rem;
+    font-size: 0.65rem;
   }
 
   .tableRow {
-    grid-template-columns: 40px 1fr 1fr 70px;
-    padding: 0.75rem 0.75rem;
+    grid-template-columns: 36px 1fr 1fr 60px;
+    padding: 0.6rem 0.5rem;
   }
-  /* rest stays the same */
+
+  .driver {
+    gap: 0.3rem;
+  }
+
+  .teamBar {
+    width: 3px;
+    height: 24px;
+  }
+
+  .code {
+    font-size: 0.7rem;
+    min-width: 24px;
+  }
+
+  .name {
+    font-size: 0.65rem;
+  }
+
+  .team {
+    font-size: 0.6rem;
+  }
+
+  .pos {
+    font-size: var(--font-size-sm);
+  }
+
+  .scoreBadge {
+    flex-direction: column;
+    gap: 0.1rem;
+    align-items: flex-start;
+  }
+
+  .pts {
+    font-size: 0.7rem;
+  }
 }

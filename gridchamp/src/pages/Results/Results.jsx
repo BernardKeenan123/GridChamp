@@ -23,26 +23,26 @@ function getScore(predictedCode, predictions, actualResults) {
 }
 
 const driverInfo = {
-  VER: { name: "Verstappen", team: "Red Bull Racing", colour: "#3671C6" },
-  NOR: { name: "Norris", team: "McLaren", colour: "#FF8000" },
-  LEC: { name: "Leclerc", team: "Ferrari", colour: "#E8002D" },
-  PIA: { name: "Piastri", team: "McLaren", colour: "#FF8000" },
-  HAM: { name: "Hamilton", team: "Ferrari", colour: "#E8002D" },
-  RUS: { name: "Russell", team: "Mercedes", colour: "#27F4D2" },
-  SAI: { name: "Sainz", team: "Williams", colour: "#64C4FF" },
-  ANT: { name: "Antonelli", team: "Mercedes", colour: "#27F4D2" },
-  ALO: { name: "Alonso", team: "Aston Martin", colour: "#229971" },
-  STR: { name: "Stroll", team: "Aston Martin", colour: "#229971" },
-  TSU: { name: "Tsunoda", team: "Red Bull Racing", colour: "#3671C6" },
-  HAD: { name: "Hadjar", team: "Racing Bulls", colour: "#6692FF" },
-  HUL: { name: "Hulkenberg", team: "Sauber", colour: "#52E252" },
-  BOR: { name: "Bortoleto", team: "Sauber", colour: "#52E252" },
-  OCO: { name: "Ocon", team: "Haas", colour: "#B6BABD" },
-  BEA: { name: "Bearman", team: "Haas", colour: "#B6BABD" },
-  GAS: { name: "Gasly", team: "Alpine", colour: "#FF87BC" },
-  DOO: { name: "Doohan", team: "Alpine", colour: "#FF87BC" },
-  ALB: { name: "Albon", team: "Williams", colour: "#64C4FF" },
-  LAW: { name: "Lawson", team: "Racing Bulls", colour: "#6692FF" },
+  VER: { team: "Red Bull Racing", colour: "#3671C6" },
+  NOR: { team: "McLaren", colour: "#FF8000" },
+  LEC: { team: "Ferrari", colour: "#E8002D" },
+  PIA: { team: "McLaren", colour: "#FF8000" },
+  HAM: { team: "Ferrari", colour: "#E8002D" },
+  RUS: { team: "Mercedes", colour: "#27F4D2" },
+  SAI: { team: "Williams", colour: "#64C4FF" },
+  ANT: { team: "Mercedes", colour: "#27F4D2" },
+  ALO: { team: "Aston Martin", colour: "#229971" },
+  STR: { team: "Aston Martin", colour: "#229971" },
+  TSU: { team: "Red Bull Racing", colour: "#3671C6" },
+  HAD: { team: "Racing Bulls", colour: "#6692FF" },
+  HUL: { team: "Sauber", colour: "#52E252" },
+  BOR: { team: "Sauber", colour: "#52E252" },
+  OCO: { team: "Haas", colour: "#B6BABD" },
+  BEA: { team: "Haas", colour: "#B6BABD" },
+  GAS: { team: "Alpine", colour: "#FF87BC" },
+  DOO: { team: "Alpine", colour: "#FF87BC" },
+  ALB: { team: "Williams", colour: "#64C4FF" },
+  LAW: { team: "Racing Bulls", colour: "#6692FF" },
 };
 
 function Results() {
@@ -55,11 +55,9 @@ function Results() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // League selector state
   const [userLeagues, setUserLeagues] = useState([]);
-  const [selectedLeagueId, setSelectedLeagueId] = useState(null); // null = global
+  const [selectedLeagueId, setSelectedLeagueId] = useState(null);
 
-  // Load session, actual results and user's leagues on mount
   useEffect(() => {
     async function loadInitial() {
       try {
@@ -106,7 +104,6 @@ function Results() {
     loadInitial();
   }, [sessionId]);
 
-  // Reload predictions and score whenever selected league changes
   useEffect(() => {
     async function loadLeagueData() {
       try {
@@ -177,7 +174,6 @@ function Results() {
           </div>
         </div>
 
-        {/* League selector */}
         {userLeagues.length > 0 && (
           <div className={styles.leagueSelector}>
             <label className={styles.leagueSelectorLabel}>Viewing:</label>
@@ -242,17 +238,12 @@ function Results() {
 
             {predictions.map((pred) => {
               const predInfo = driverInfo[pred.driver_code] || {
-                name: pred.driver_code,
                 team: "",
                 colour: "#888",
               };
               const actualCode = actualByPosition[pred.position];
               const actualInfo = actualCode
-                ? driverInfo[actualCode] || {
-                    name: actualCode,
-                    team: "",
-                    colour: "#888",
-                  }
+                ? driverInfo[actualCode] || { team: "", colour: "#888" }
                 : null;
               const score = hasActualResults
                 ? getScore(pred.driver_code, predictions, actualResults)
@@ -268,10 +259,6 @@ function Results() {
                       style={{ backgroundColor: predInfo.colour }}
                     />
                     <span className={styles.code}>{pred.driver_code}</span>
-                    <div className={styles.driverDetails}>
-                      <span className={styles.name}>{predInfo.name}</span>
-                      <span className={styles.team}>{predInfo.team}</span>
-                    </div>
                   </div>
 
                   {hasActualResults && (
@@ -283,14 +270,6 @@ function Results() {
                             style={{ backgroundColor: actualInfo.colour }}
                           />
                           <span className={styles.code}>{actualCode}</span>
-                          <div className={styles.driverDetails}>
-                            <span className={styles.name}>
-                              {actualInfo.name}
-                            </span>
-                            <span className={styles.team}>
-                              {actualInfo.team}
-                            </span>
-                          </div>
                         </>
                       ) : (
                         <span style={{ color: "var(--color-text-secondary)" }}>
