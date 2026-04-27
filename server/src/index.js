@@ -15,6 +15,9 @@ import scoreRoutes from './routes/scores.js'
 import leaderboardRoutes from './routes/leaderboard.js'
 import leagueRoutes from './routes/leagues.js'
 import openf1Routes from './routes/openf1.js'
+import resultsRouter from './routes/results.js'
+
+
 
 const app = express()
 
@@ -36,6 +39,7 @@ app.use('/api/scores', scoreRoutes)        // User scores
 app.use('/api/leaderboard', leaderboardRoutes) // Global leaderboard
 app.use('/api/leagues', leagueRoutes)      // Mini leagues
 app.use('/api/openf1', openf1Routes)
+app.use('/api/results', resultsRouter)
 
 // ── Health check endpoint ─────────────────────────────────────────────────────
 // Used to verify the API is running and the database connection is active

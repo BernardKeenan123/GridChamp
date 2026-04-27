@@ -111,3 +111,12 @@ export async function getLaps(sessionKey) {
 export async function getMeetings(year = 2024) {
   return openF1Request(`/meetings?year=${year}`)
 }
+
+// Find a session on OpenF1 by race name, session type and year
+// Used to auto-lookup session keys without manual entry
+export async function findSession(raceName, sessionType, year) {
+  const data = await openF1Request(
+    `/sessions?year=${year}&session_name=${encodeURIComponent(sessionType)}&meeting_name=${encodeURIComponent(raceName)}`
+  )
+  return data.length > 0 ? data[0] : null
+}

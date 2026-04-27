@@ -8,79 +8,6 @@ import {
 import { sessionAPI, predictionAPI, leagueAPI } from "../../services/api";
 import styles from "./Predict.module.css";
 
-// 2026 F1 driver list with team colours
-// TODO: fetch dynamically from OpenF1 API once session keys are available
-const drivers = [
-  {
-    id: 1,
-    code: "VER",
-    name: "Verstappen",
-    team: "Red Bull Racing",
-    colour: "#3671C6",
-  },
-  { id: 2, code: "NOR", name: "Norris", team: "McLaren", colour: "#FF8000" },
-  { id: 3, code: "LEC", name: "Leclerc", team: "Ferrari", colour: "#E8002D" },
-  { id: 4, code: "PIA", name: "Piastri", team: "McLaren", colour: "#FF8000" },
-  { id: 5, code: "HAM", name: "Hamilton", team: "Ferrari", colour: "#E8002D" },
-  { id: 6, code: "RUS", name: "Russell", team: "Mercedes", colour: "#27F4D2" },
-  { id: 7, code: "SAI", name: "Sainz", team: "Williams", colour: "#64C4FF" },
-  {
-    id: 8,
-    code: "ANT",
-    name: "Antonelli",
-    team: "Mercedes",
-    colour: "#27F4D2",
-  },
-  {
-    id: 9,
-    code: "ALO",
-    name: "Alonso",
-    team: "Aston Martin",
-    colour: "#229971",
-  },
-  {
-    id: 10,
-    code: "STR",
-    name: "Stroll",
-    team: "Aston Martin",
-    colour: "#229971",
-  },
-  {
-    id: 11,
-    code: "TSU",
-    name: "Tsunoda",
-    team: "Red Bull Racing",
-    colour: "#3671C6",
-  },
-  {
-    id: 12,
-    code: "HAD",
-    name: "Hadjar",
-    team: "Racing Bulls",
-    colour: "#6692FF",
-  },
-  {
-    id: 13,
-    code: "HUL",
-    name: "Hulkenberg",
-    team: "Sauber",
-    colour: "#52E252",
-  },
-  { id: 14, code: "BOR", name: "Bortoleto", team: "Sauber", colour: "#52E252" },
-  { id: 15, code: "OCO", name: "Ocon", team: "Haas", colour: "#B6BABD" },
-  { id: 16, code: "BEA", name: "Bearman", team: "Haas", colour: "#B6BABD" },
-  { id: 17, code: "GAS", name: "Gasly", team: "Alpine", colour: "#FF87BC" },
-  { id: 18, code: "DOO", name: "Doohan", team: "Alpine", colour: "#FF87BC" },
-  { id: 19, code: "ALB", name: "Albon", team: "Williams", colour: "#64C4FF" },
-  {
-    id: 20,
-    code: "LAW",
-    name: "Lawson",
-    team: "Racing Bulls",
-    colour: "#6692FF",
-  },
-];
-
 function Predict() {
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
@@ -89,6 +16,7 @@ function Predict() {
 
   const [session, setSession] = useState(null);
   const [league, setLeague] = useState(null);
+  const [drivers, setDrivers] = useState([]);
   const [positions, setPositions] = useState(10);
   const [predictions, setPredictions] = useState(Array(10).fill(null));
   const [fastestLapPick, setFastestLapPick] = useState(null);
@@ -102,9 +30,27 @@ function Predict() {
   useEffect(() => {
     async function load() {
       try {
-        // Always fetch session
+        // Fetch session
         const sessionData = await sessionAPI.getOne(sessionId);
         setSession(sessionData);
+
+        // Fetch drivers from OpenF1 using the session key
+        try {
+          const res = await fetch(
+            `https://api.openf1.org/v1/drivers?session_key=${sessionData.openf1_session_key}`,
+          );
+          const data = await res.json();
+          const mapped = data.map((d) => ({
+            id: d.driver_number,
+            code: d.name_acronym,
+            name: d.last_name,
+            team: d.team_name,
+            colour: d.team_colour ? `#${d.team_colour}` : "#ffffff",
+          }));
+          setDrivers(mapped);
+        } catch {
+          setError("Could not load drivers for this session");
+        }
 
         // If league_id in URL, fetch league settings
         let leagueData = null;
@@ -315,7 +261,6 @@ function Predict() {
               ))}
             </div>
 
-            {/* Bonus predictions — only shown for league predictions with those settings enabled */}
             {leagueId && league?.fastest_lap && (
               <div className={styles.bonusSection}>
                 <h3>Fastest lap</h3>
@@ -403,49 +348,14 @@ function Predict() {
                       if (nextEmpty !== -1) handleSelect(nextEmpty, driver);
                     }}
                   >
-                    <div
-                      key={driver.id}
-                      className={`${styles.driverCard} ${isUsed ? styles.driverUsed : ""}`}
-                      onClick={() => {
-                        if (isUsed) return;
-                        const nextEmpty = predictions.findIndex(
-                          (p) => p === null,
-                        );
-                        if (nextEmpty !== -1) handleSelect(nextEmpty, driver);
-                      }}
-                    >
-                      <span
-                        className={styles.teamColour}
-                        style={{ backgroundColor: driver.colour }}
-                      />
-                      <div className={styles.driverInfo}>
-                        <span className={styles.driverCode}>{driver.code}</span>
-                        <span className={styles.driverName}>{driver.name}</span>
-                        <span className={styles.driverTeam}>{driver.team}</span>
-                      </div>
-                      {!isUsed && (
-                        <div className={styles.posButtons}>
-                          {predictions.map((slot, i) => (
-                            <button
-                              key={i}
-                              className={`${styles.posBtn} ${slot !== null ? styles.posBtnTaken : ""}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!slot) handleSelect(i, driver);
-                              }}
-                              disabled={slot !== null}
-                              title={
-                                slot ? `P${i + 1} taken` : `Place at P${i + 1}`
-                              }
-                            >
-                              P{i + 1}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {isUsed && (
-                        <span className={styles.usedLabel}>Added</span>
-                      )}
+                    <span
+                      className={styles.teamColour}
+                      style={{ backgroundColor: driver.colour }}
+                    />
+                    <div className={styles.driverInfo}>
+                      <span className={styles.driverCode}>{driver.code}</span>
+                      <span className={styles.driverName}>{driver.name}</span>
+                      <span className={styles.driverTeam}>{driver.team}</span>
                     </div>
                     {!isUsed && (
                       <div className={styles.posButtons}>
@@ -453,7 +363,10 @@ function Predict() {
                           <button
                             key={i}
                             className={`${styles.posBtn} ${slot !== null ? styles.posBtnTaken : ""}`}
-                            onClick={() => !slot && handleSelect(i, driver)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!slot) handleSelect(i, driver);
+                            }}
                             disabled={slot !== null}
                             title={
                               slot ? `P${i + 1} taken` : `Place at P${i + 1}`
