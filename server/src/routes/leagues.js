@@ -70,18 +70,15 @@ router.post('/:id/members', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
 
-    // Check requester is the creator
     const league = await pool.query('SELECT * FROM leagues WHERE id = $1', [req.params.id])
     if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
     if (league.rows[0].created_by !== req.userId) return res.status(403).json({ error: 'Only the league creator can add members' })
 
-    // Find the user by username
     const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username])
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' })
 
     const targetUser = userResult.rows[0]
 
-    // Check not already a member
     const existing = await pool.query(
       'SELECT * FROM league_members WHERE league_id = $1 AND user_id = $2',
       [req.params.id, targetUser.id]
@@ -106,7 +103,6 @@ router.delete('/:id/members/:userId', authMiddleware, async (req, res) => {
     if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
     if (league.rows[0].created_by !== req.userId) return res.status(403).json({ error: 'Only the league creator can remove members' })
 
-    // Prevent creator removing themselves
     if (parseInt(req.params.userId) === req.userId) return res.status(400).json({ error: 'Creator cannot remove themselves' })
 
     await pool.query(
@@ -139,6 +135,25 @@ router.post('/:id/leave', authMiddleware, async (req, res) => {
     )
 
     res.json({ message: 'Left league successfully' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Delete a league — creator only
+// Cascade deletes members, predictions and scores via FK constraints
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool()
+
+    const league = await pool.query('SELECT * FROM leagues WHERE id = $1', [req.params.id])
+    if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
+    if (league.rows[0].created_by !== req.userId) return res.status(403).json({ error: 'Only the league creator can delete this league' })
+
+    await pool.query('DELETE FROM leagues WHERE id = $1', [req.params.id])
+
+    res.json({ message: 'League deleted' })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
