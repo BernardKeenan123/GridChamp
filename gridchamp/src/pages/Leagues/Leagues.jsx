@@ -37,6 +37,10 @@ function Leagues() {
   const [addSearchFocused, setAddSearchFocused] = useState(false);
   const addSearchTimeout = useRef(null);
 
+  // Inline confirmation state
+  const [confirmAction, setConfirmAction] = useState(null);
+  // confirmAction shape: { type: 'leave' | 'delete' | 'remove', userId?, username?, label }
+
   useEffect(() => {
     loadLeagues();
     loadSessions();
@@ -122,9 +126,7 @@ function Leagues() {
 
   function handleMemberSearchFocus() {
     setMemberSearchFocused(true);
-    if (searchResults.length === 0) {
-      searchUsers("", setSearchResults);
-    }
+    if (searchResults.length === 0) searchUsers("", setSearchResults);
   }
 
   function handleAddSearchChange(e) {
@@ -139,9 +141,7 @@ function Leagues() {
 
   function handleAddSearchFocus() {
     setAddSearchFocused(true);
-    if (addSearchResults.length === 0) {
-      searchUsers("", setAddSearchResults);
-    }
+    if (addSearchResults.length === 0) searchUsers("", setAddSearchResults);
   }
 
   function selectMember(u) {
@@ -160,7 +160,6 @@ function Leagues() {
     if (!newLeagueName.trim()) return;
     try {
       const token = localStorage.getItem("token");
-
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/leagues`, {
         method: "POST",
         headers: {
@@ -238,63 +237,47 @@ function Leagues() {
     }
   }
 
-  async function handleRemoveMember(userId, username) {
-    if (!confirm(`Remove ${username} from this league?`)) return;
-    try {
-      const token = localStorage.getItem("token");
-      await fetch(
-        `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/members/${userId}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
-      );
-      await loadMembers(activeLeague.id);
-      await loadLeagues();
-    } catch (err) {
-      setError("Failed to remove member");
-    }
-  }
+  async function executeConfirmedAction() {
+    if (!confirmAction) return;
+    const token = localStorage.getItem("token");
 
-  async function handleLeave() {
-    if (!confirm(`Leave ${activeLeague.name}?`)) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/leave`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (res.ok) {
+      if (confirmAction.type === "remove") {
+        await fetch(
+          `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/members/${confirmAction.userId}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+        );
+        await loadMembers(activeLeague.id);
         await loadLeagues();
-        setActiveLeague(null);
-      } else {
-        const data = await res.json();
-        setError(data.error);
+      } else if (confirmAction.type === "leave") {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/leave`,
+          { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (res.ok) {
+          await loadLeagues();
+          setActiveLeague(null);
+        } else {
+          const data = await res.json();
+          setError(data.error);
+        }
+      } else if (confirmAction.type === "delete") {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (res.ok) {
+          await loadLeagues();
+          setActiveLeague(null);
+        } else {
+          const data = await res.json();
+          setError(data.error);
+        }
       }
     } catch (err) {
-      setError("Failed to leave league");
-    }
-  }
-
-  async function handleDelete() {
-    if (
-      !confirm(
-        `Permanently delete "${activeLeague.name}"? This cannot be undone.`,
-      )
-    )
-      return;
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (res.ok) {
-        await loadLeagues();
-        setActiveLeague(null);
-      } else {
-        const data = await res.json();
-        setError(data.error);
-      }
-    } catch (err) {
-      setError("Failed to delete league");
+      setError("Action failed");
+    } finally {
+      setConfirmAction(null);
     }
   }
 
@@ -351,6 +334,27 @@ function Leagues() {
             }}
           >
             {error}
+          </div>
+        )}
+
+        {/* Inline confirmation dialog */}
+        {confirmAction && (
+          <div className={styles.confirmBox}>
+            <p>{confirmAction.label}</p>
+            <div className={styles.confirmActions}>
+              <button
+                className={styles.btnOutline}
+                onClick={() => setConfirmAction(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.btnDanger}
+                onClick={executeConfirmedAction}
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         )}
 
@@ -563,7 +567,12 @@ function Leagues() {
                         </button>
                         <button
                           className={styles.btnDanger}
-                          onClick={handleDelete}
+                          onClick={() =>
+                            setConfirmAction({
+                              type: "delete",
+                              label: `Permanently delete "${activeLeague.name}"? This cannot be undone.`,
+                            })
+                          }
                         >
                           Delete league
                         </button>
@@ -572,7 +581,12 @@ function Leagues() {
                     {!isCreator && (
                       <button
                         className={styles.btnDanger}
-                        onClick={handleLeave}
+                        onClick={() =>
+                          setConfirmAction({
+                            type: "leave",
+                            label: `Leave ${activeLeague.name}?`,
+                          })
+                        }
                       >
                         Leave league
                       </button>
@@ -670,7 +684,12 @@ function Leagues() {
                           <button
                             className={styles.removeBtn}
                             onClick={() =>
-                              handleRemoveMember(row.id, row.username)
+                              setConfirmAction({
+                                type: "remove",
+                                userId: row.id,
+                                username: row.username,
+                                label: `Remove ${row.username} from this league?`,
+                              })
                             }
                           >
                             ✕
