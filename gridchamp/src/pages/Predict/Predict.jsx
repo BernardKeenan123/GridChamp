@@ -8,6 +8,77 @@ import {
 import { sessionAPI, predictionAPI, leagueAPI } from "../../services/api";
 import styles from "./Predict.module.css";
 
+const FALLBACK_DRIVERS = [
+  {
+    id: 1,
+    code: "VER",
+    name: "Verstappen",
+    team: "Red Bull Racing",
+    colour: "#3671C6",
+  },
+  { id: 2, code: "NOR", name: "Norris", team: "McLaren", colour: "#FF8000" },
+  { id: 3, code: "LEC", name: "Leclerc", team: "Ferrari", colour: "#E8002D" },
+  { id: 4, code: "PIA", name: "Piastri", team: "McLaren", colour: "#FF8000" },
+  { id: 5, code: "HAM", name: "Hamilton", team: "Ferrari", colour: "#E8002D" },
+  { id: 6, code: "RUS", name: "Russell", team: "Mercedes", colour: "#27F4D2" },
+  { id: 7, code: "SAI", name: "Sainz", team: "Williams", colour: "#64C4FF" },
+  {
+    id: 8,
+    code: "ANT",
+    name: "Antonelli",
+    team: "Mercedes",
+    colour: "#27F4D2",
+  },
+  {
+    id: 9,
+    code: "ALO",
+    name: "Alonso",
+    team: "Aston Martin",
+    colour: "#229971",
+  },
+  {
+    id: 10,
+    code: "STR",
+    name: "Stroll",
+    team: "Aston Martin",
+    colour: "#229971",
+  },
+  {
+    id: 11,
+    code: "TSU",
+    name: "Tsunoda",
+    team: "Red Bull Racing",
+    colour: "#3671C6",
+  },
+  {
+    id: 12,
+    code: "HAD",
+    name: "Hadjar",
+    team: "Racing Bulls",
+    colour: "#6692FF",
+  },
+  {
+    id: 13,
+    code: "HUL",
+    name: "Hulkenberg",
+    team: "Sauber",
+    colour: "#52E252",
+  },
+  { id: 14, code: "BOR", name: "Bortoleto", team: "Sauber", colour: "#52E252" },
+  { id: 15, code: "OCO", name: "Ocon", team: "Haas", colour: "#B6BABD" },
+  { id: 16, code: "BEA", name: "Bearman", team: "Haas", colour: "#B6BABD" },
+  { id: 17, code: "GAS", name: "Gasly", team: "Alpine", colour: "#FF87BC" },
+  { id: 18, code: "DOO", name: "Doohan", team: "Alpine", colour: "#FF87BC" },
+  { id: 19, code: "ALB", name: "Albon", team: "Williams", colour: "#64C4FF" },
+  {
+    id: 20,
+    code: "LAW",
+    name: "Lawson",
+    team: "Racing Bulls",
+    colour: "#6692FF",
+  },
+];
+
 function Predict() {
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
@@ -30,29 +101,31 @@ function Predict() {
   useEffect(() => {
     async function load() {
       try {
-        // Fetch session
         const sessionData = await sessionAPI.getOne(sessionId);
         setSession(sessionData);
 
-        // Fetch drivers from OpenF1 using the session key
-        try {
-          const res = await fetch(
-            `https://api.openf1.org/v1/drivers?session_key=${sessionData.openf1_session_key}`,
-          );
-          const data = await res.json();
-          const mapped = data.map((d) => ({
-            id: d.driver_number,
-            code: d.name_acronym,
-            name: d.last_name,
-            team: d.team_name,
-            colour: d.team_colour ? `#${d.team_colour}` : "#ffffff",
-          }));
-          setDrivers(mapped);
-        } catch {
-          setError("Could not load drivers for this session");
+        // Use OpenF1 if session has a key, otherwise fall back to 2026 lineup
+        if (sessionData.session_key) {
+          try {
+            const res = await fetch(
+              `https://api.openf1.org/v1/drivers?session_key=${sessionData.session_key}`,
+            );
+            const data = await res.json();
+            const mapped = data.map((d) => ({
+              id: d.driver_number,
+              code: d.name_acronym,
+              name: d.last_name,
+              team: d.team_name,
+              colour: d.team_colour ? `#${d.team_colour}` : "#ffffff",
+            }));
+            setDrivers(mapped);
+          } catch {
+            setDrivers(FALLBACK_DRIVERS);
+          }
+        } else {
+          setDrivers(FALLBACK_DRIVERS);
         }
 
-        // If league_id in URL, fetch league settings
         let leagueData = null;
         let slots = 10;
 
@@ -63,7 +136,6 @@ function Predict() {
           setPositions(slots);
         }
 
-        // Fetch existing predictions for this session/league combo
         const existingPredictions = await predictionAPI.getForSession(
           sessionId,
           leagueId ? parseInt(leagueId) : null,
@@ -83,7 +155,9 @@ function Predict() {
           if (positionPredictions.length > 0) {
             const filled = Array(slots).fill(null);
             for (const pred of positionPredictions) {
-              const driver = drivers.find((d) => d.code === pred.driver_code);
+              const driver = FALLBACK_DRIVERS.find(
+                (d) => d.code === pred.driver_code,
+              );
               if (driver && pred.position <= slots) {
                 filled[pred.position - 1] = driver;
               }
@@ -93,14 +167,14 @@ function Predict() {
           }
 
           if (flPrediction) {
-            const driver = drivers.find(
+            const driver = FALLBACK_DRIVERS.find(
               (d) => d.code === flPrediction.driver_code,
             );
             if (driver) setFastestLapPick(driver);
           }
 
           if (dodPrediction) {
-            const driver = drivers.find(
+            const driver = FALLBACK_DRIVERS.find(
               (d) => d.code === dodPrediction.driver_code,
             );
             if (driver) setDriverOfDayPick(driver);
@@ -115,7 +189,6 @@ function Predict() {
     load();
   }, [sessionId, leagueId]);
 
-  // Reset predictions array when positions count changes
   useEffect(() => {
     setPredictions(Array(positions).fill(null));
   }, [positions]);
