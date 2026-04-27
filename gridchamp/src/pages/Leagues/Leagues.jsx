@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { leagueAPI, sessionAPI } from "../../services/api";
@@ -26,13 +26,21 @@ function Leagues() {
   const [driverOfDay, setDriverOfDay] = useState(false);
   const [poleBonus, setPoleBonus] = useState(false);
 
+  // Member search during creation
+  const [memberSearch, setMemberSearch] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const searchTimeout = useRef(null);
+
   // Join form state
   const [joinCode, setJoinCode] = useState("");
 
-  // Add member state
-  const [addUsername, setAddUsername] = useState("");
+  // Post-creation add member state
+  const [addSearch, setAddSearch] = useState("");
+  const [addSearchResults, setAddSearchResults] = useState([]);
   const [addMemberError, setAddMemberError] = useState("");
   const [addMemberSuccess, setAddMemberSuccess] = useState("");
+  const addSearchTimeout = useRef(null);
 
   useEffect(() => {
     loadLeagues();
@@ -90,20 +98,98 @@ function Leagues() {
     }
   }
 
+  async function searchUsers(q, setResults) {
+    if (!q || q.length < 2) {
+      setResults([]);
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/search?q=${encodeURIComponent(q)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json();
+      setResults(data);
+    } catch (err) {
+      console.error("Search failed:", err);
+    }
+  }
+
+  function handleMemberSearchChange(e) {
+    const q = e.target.value;
+    setMemberSearch(q);
+    clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(
+      () => searchUsers(q, setSearchResults),
+      300,
+    );
+  }
+
+  function handleAddSearchChange(e) {
+    const q = e.target.value;
+    setAddSearch(q);
+    clearTimeout(addSearchTimeout.current);
+    addSearchTimeout.current = setTimeout(
+      () => searchUsers(q, setAddSearchResults),
+      300,
+    );
+  }
+
+  function selectMember(u) {
+    if (selectedMembers.find((m) => m.id === u.id)) return;
+    setSelectedMembers((prev) => [...prev, u]);
+    setMemberSearch("");
+    setSearchResults([]);
+  }
+
+  function removeMember(id) {
+    setSelectedMembers((prev) => prev.filter((m) => m.id !== id));
+  }
+
   async function handleCreate() {
     if (!newLeagueName.trim()) return;
     try {
-      await leagueAPI.create(newLeagueName, {
-        prediction_slots: predictionSlots,
-        fastest_lap: fastestLap,
-        driver_of_day: driverOfDay,
-        pole_bonus: poleBonus,
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/leagues`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newLeagueName,
+          prediction_slots: predictionSlots,
+          fastest_lap: fastestLap,
+          driver_of_day: driverOfDay,
+          pole_bonus: poleBonus,
+        }),
       });
+      const league = await res.json();
+
+      for (const member of selectedMembers) {
+        await fetch(
+          `${import.meta.env.VITE_API_URL}/api/leagues/${league.id}/members`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ username: member.username }),
+          },
+        );
+      }
+
       setNewLeagueName("");
       setPredictionSlots(10);
       setFastestLap(false);
       setDriverOfDay(false);
       setPoleBonus(false);
+      setSelectedMembers([]);
+      setMemberSearch("");
+      setSearchResults([]);
       setShowCreate(false);
       await loadLeagues();
     } catch (err) {
@@ -123,8 +209,7 @@ function Leagues() {
     }
   }
 
-  async function handleAddMember() {
-    if (!addUsername.trim()) return;
+  async function handleAddMember(u) {
     setAddMemberError("");
     setAddMemberSuccess("");
     try {
@@ -137,15 +222,16 @@ function Leagues() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ username: addUsername }),
+          body: JSON.stringify({ username: u.username }),
         },
       );
       const data = await res.json();
       if (!res.ok) {
         setAddMemberError(data.error);
       } else {
-        setAddMemberSuccess(`${addUsername} added successfully`);
-        setAddUsername("");
+        setAddMemberSuccess(`${u.username} added successfully`);
+        setAddSearch("");
+        setAddSearchResults([]);
         await loadMembers(activeLeague.id);
         await loadLeagues();
       }
@@ -160,10 +246,7 @@ function Leagues() {
       const token = localStorage.getItem("token");
       await fetch(
         `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/members/${userId}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
       );
       await loadMembers(activeLeague.id);
       await loadLeagues();
@@ -178,10 +261,7 @@ function Leagues() {
       const token = localStorage.getItem("token");
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/leave`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.ok) {
         await loadLeagues();
@@ -267,7 +347,7 @@ function Leagues() {
         {showCreate && (
           <div className={styles.formCard}>
             <h3>Create a new league</h3>
-            <p>Customise your league settings below.</p>
+            <p>Customise your league settings and add members below.</p>
 
             <div className={styles.formGroup}>
               <label className={styles.label}>League name</label>
@@ -353,10 +433,63 @@ function Leagues() {
               </div>
             </div>
 
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Add members</label>
+              <p className={styles.settingDesc}>
+                Search for users to add to your league.
+              </p>
+              <div className={styles.memberSearch}>
+                <input
+                  type="text"
+                  placeholder="Search by username..."
+                  value={memberSearch}
+                  onChange={handleMemberSearchChange}
+                  className={styles.input}
+                />
+                {searchResults.length > 0 && (
+                  <div className={styles.searchResults}>
+                    {searchResults
+                      .filter(
+                        (u) => !selectedMembers.find((m) => m.id === u.id),
+                      )
+                      .map((u) => (
+                        <div
+                          key={u.id}
+                          className={styles.searchResult}
+                          onClick={() => selectMember(u)}
+                        >
+                          {u.username}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              {selectedMembers.length > 0 && (
+                <div className={styles.selectedMembers}>
+                  {selectedMembers.map((m) => (
+                    <div key={m.id} className={styles.memberTag}>
+                      {m.username}
+                      <span
+                        className={styles.memberTagRemove}
+                        onClick={() => removeMember(m.id)}
+                      >
+                        ✕
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className={styles.formActions}>
               <button
                 className={styles.btnOutline}
-                onClick={() => setShowCreate(false)}
+                onClick={() => {
+                  setShowCreate(false);
+                  setSelectedMembers([]);
+                  setMemberSearch("");
+                  setSearchResults([]);
+                }}
               >
                 Cancel
               </button>
@@ -446,23 +579,32 @@ function Leagues() {
                   </div>
                 </div>
 
-                {/* Add member form — creator only */}
+                {/* Post-creation add member */}
                 {showAddMember && isCreator && (
                   <div className={styles.addMemberForm}>
-                    <div className={styles.formRow}>
+                    <div className={styles.memberSearch}>
                       <input
                         type="text"
-                        placeholder="Enter username"
-                        value={addUsername}
-                        onChange={(e) => setAddUsername(e.target.value)}
+                        placeholder="Search by username..."
+                        value={addSearch}
+                        onChange={handleAddSearchChange}
                         className={styles.input}
                       />
-                      <button
-                        className={styles.btnPrimary}
-                        onClick={handleAddMember}
-                      >
-                        Add
-                      </button>
+                      {addSearchResults.length > 0 && (
+                        <div className={styles.searchResults}>
+                          {addSearchResults
+                            .filter((u) => !members.find((m) => m.id === u.id))
+                            .map((u) => (
+                              <div
+                                key={u.id}
+                                className={styles.searchResult}
+                                onClick={() => handleAddMember(u)}
+                              >
+                                {u.username}
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
                     {addMemberError && (
                       <p
@@ -489,13 +631,13 @@ function Leagues() {
                   </div>
                 )}
 
-                {/* Standings table */}
+                {/* Standings */}
                 <div className={styles.tableWrapper}>
                   <div className={styles.tableHeader}>
                     <span>Rank</span>
                     <span>Player</span>
                     <span>Points</span>
-                    {isCreator && <span></span>}
+                    {isCreator && <span />}
                   </div>
                   {standings.map((row, index) => {
                     const rank = index + 1;
