@@ -339,3 +339,8 @@
 .btnResults:hover {
   border-color: var(--color-text-secondary);
 }
+
+.sessionRight {
+  display: flex;
+  align-items: center;
+}

@@ -10,7 +10,7 @@ router.get('/me', authMiddleware, async (req, res) => {
     const pool = getPool()
 
     const result = await pool.query(
-      'SELECT id, username, email, created_at FROM users WHERE id = $1',
+      'SELECT id, username, created_at FROM users WHERE id = $1',
       [req.userId]
     )
 
@@ -25,22 +25,32 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 })
 
-// Search users by username — used for league member search
+// Search users by username — returns all users when query is empty
 // Excludes the requesting user from results
 router.get('/search', authMiddleware, async (req, res) => {
   const { q } = req.query
-  if (!q || q.length < 2) return res.json([])
 
   try {
     const pool = getPool()
 
-    const result = await pool.query(
-      `SELECT id, username FROM users 
-       WHERE username ILIKE $1 AND id != $2 
-       ORDER BY username ASC 
-       LIMIT 10`,
-      [`%${q}%`, req.userId]
-    )
+    let result
+    if (!q || q.length === 0) {
+      // Return all users except the requesting user
+      result = await pool.query(
+        `SELECT id, username FROM users 
+         WHERE id != $1 
+         ORDER BY username ASC`,
+        [req.userId]
+      )
+    } else {
+      result = await pool.query(
+        `SELECT id, username FROM users 
+         WHERE username ILIKE $1 AND id != $2 
+         ORDER BY username ASC 
+         LIMIT 10`,
+        [`%${q}%`, req.userId]
+      )
+    }
 
     res.json(result.rows)
   } catch (err) {

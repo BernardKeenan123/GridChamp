@@ -235,3 +235,39 @@
   font-weight: 700;
   color: var(--color-success);
 }
+
+.leagueSelector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.leagueSelectorLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.leagueSelectorSelect {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.leagueSelectorSelect:focus {
+  border-color: var(--color-primary);
+}
+
+.leagueSelectorSelect option {
+  background: #1a1a1a;
+  color: #ffffff;
+}

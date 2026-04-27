@@ -29,6 +29,7 @@ function Leagues() {
   const [memberSearch, setMemberSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
+  const [memberSearchFocused, setMemberSearchFocused] = useState(false);
   const searchTimeout = useRef(null);
 
   // Post-creation add member state
@@ -36,6 +37,7 @@ function Leagues() {
   const [addSearchResults, setAddSearchResults] = useState([]);
   const [addMemberError, setAddMemberError] = useState("");
   const [addMemberSuccess, setAddMemberSuccess] = useState("");
+  const [addSearchFocused, setAddSearchFocused] = useState(false);
   const addSearchTimeout = useRef(null);
 
   useEffect(() => {
@@ -95,16 +97,15 @@ function Leagues() {
   }
 
   async function searchUsers(q, setResults) {
-    if (!q || q.length < 2) {
-      setResults([]);
-      return;
-    }
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/users/search?q=${encodeURIComponent(q)}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const url =
+        q && q.length > 0
+          ? `${import.meta.env.VITE_API_URL}/api/users/search?q=${encodeURIComponent(q)}`
+          : `${import.meta.env.VITE_API_URL}/api/users/search`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setResults(data);
     } catch (err) {
@@ -118,8 +119,15 @@ function Leagues() {
     clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(
       () => searchUsers(q, setSearchResults),
-      300,
+      200,
     );
+  }
+
+  function handleMemberSearchFocus() {
+    setMemberSearchFocused(true);
+    if (searchResults.length === 0) {
+      searchUsers("", setSearchResults);
+    }
   }
 
   function handleAddSearchChange(e) {
@@ -128,8 +136,15 @@ function Leagues() {
     clearTimeout(addSearchTimeout.current);
     addSearchTimeout.current = setTimeout(
       () => searchUsers(q, setAddSearchResults),
-      300,
+      200,
     );
+  }
+
+  function handleAddSearchFocus() {
+    setAddSearchFocused(true);
+    if (addSearchResults.length === 0) {
+      searchUsers("", setAddSearchResults);
+    }
   }
 
   function selectMember(u) {
@@ -137,6 +152,7 @@ function Leagues() {
     setSelectedMembers((prev) => [...prev, u]);
     setMemberSearch("");
     setSearchResults([]);
+    setMemberSearchFocused(false);
   }
 
   function removeMember(id) {
@@ -216,6 +232,7 @@ function Leagues() {
         setAddMemberSuccess(`${u.username} added successfully`);
         setAddSearch("");
         setAddSearchResults([]);
+        setAddSearchFocused(false);
         await loadMembers(activeLeague.id);
         await loadLeagues();
       }
@@ -408,17 +425,21 @@ function Leagues() {
             <div className={styles.formGroup}>
               <label className={styles.label}>Add members</label>
               <p className={styles.settingDesc}>
-                Search for users to add to your league.
+                Click the box to see all users, or type to filter.
               </p>
               <div className={styles.memberSearch}>
                 <input
                   type="text"
-                  placeholder="Search by username..."
+                  placeholder="Click to see all users..."
                   value={memberSearch}
                   onChange={handleMemberSearchChange}
+                  onFocus={handleMemberSearchFocus}
+                  onBlur={() =>
+                    setTimeout(() => setMemberSearchFocused(false), 150)
+                  }
                   className={styles.input}
                 />
-                {searchResults.length > 0 && (
+                {memberSearchFocused && searchResults.length > 0 && (
                   <div className={styles.searchResults}>
                     {searchResults
                       .filter(
@@ -536,12 +557,16 @@ function Leagues() {
                     <div className={styles.memberSearch}>
                       <input
                         type="text"
-                        placeholder="Search by username..."
+                        placeholder="Click to see all users..."
                         value={addSearch}
                         onChange={handleAddSearchChange}
+                        onFocus={handleAddSearchFocus}
+                        onBlur={() =>
+                          setTimeout(() => setAddSearchFocused(false), 150)
+                        }
                         className={styles.input}
                       />
-                      {addSearchResults.length > 0 && (
+                      {addSearchFocused && addSearchResults.length > 0 && (
                         <div className={styles.searchResults}>
                           {addSearchResults
                             .filter((u) => !members.find((m) => m.id === u.id))
