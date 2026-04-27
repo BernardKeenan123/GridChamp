@@ -104,7 +104,6 @@ function Predict() {
         const sessionData = await sessionAPI.getOne(sessionId);
         setSession(sessionData);
 
-        // Use OpenF1 if session has a key, otherwise fall back to 2026 lineup
         if (sessionData.session_key) {
           try {
             const res = await fetch(
@@ -249,6 +248,37 @@ function Predict() {
         <p style={{ padding: "2rem", color: "var(--color-primary)" }}>
           {error}
         </p>
+      </div>
+    );
+  }
+
+  // Session is locked — show locked state with link to results
+  if (session && new Date() > new Date(session.scheduled_at)) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.inner}>
+          <div className={styles.sessionHeader}>
+            <Link to={backLink} className={styles.back}>
+              ← {leagueId ? "Leagues" : "Dashboard"}
+            </Link>
+            <div className={styles.sessionInfo}>
+              <div>
+                <h1>
+                  {session?.race_name} <span>— {session?.session_type}</span>
+                </h1>
+                <p>Round {session?.round} · Predictions closed</p>
+              </div>
+            </div>
+          </div>
+          <div className={styles.successBox}>
+            <div className={styles.successIcon}>🔒</div>
+            <h2>Predictions locked</h2>
+            <p>This session has started. Predictions are now closed.</p>
+            <Link to={`/results/${session?.id}`} className={styles.btnPrimary}>
+              View results
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
