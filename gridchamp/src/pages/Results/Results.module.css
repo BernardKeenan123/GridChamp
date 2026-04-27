@@ -271,3 +271,62 @@
   background: #1a1a1a;
   color: #ffffff;
 }
+
+.scoreBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pts {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 1.25rem 1rem;
+  }
+
+  .tableHeader {
+    grid-template-columns: 40px 1fr 1fr 56px;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .tableRow {
+    grid-template-columns: 40px 1fr 1fr 56px;
+    padding: 0.75rem 0.75rem;
+  }
+
+  .team {
+    display: none;
+  }
+
+  .sessionInfo h1 {
+    font-size: var(--font-size-xl);
+  }
+
+  .scoreSummary {
+    padding: 1.25rem;
+    gap: 1.5rem;
+  }
+
+  .scoreValue {
+    font-size: 2.25rem;
+  }
+
+  .scoringKey {
+    gap: 0.5rem;
+  }
+
+  .leagueSelector {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .leagueSelectorSelect {
+    width: 100%;
+  }
+}
