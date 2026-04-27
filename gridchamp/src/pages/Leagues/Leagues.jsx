@@ -273,6 +273,31 @@ function Leagues() {
     }
   }
 
+  async function handleDelete() {
+    if (
+      !confirm(
+        `Permanently delete "${activeLeague.name}"? This cannot be undone.`,
+      )
+    )
+      return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (res.ok) {
+        await loadLeagues();
+        setActiveLeague(null);
+      } else {
+        const data = await res.json();
+        setError(data.error);
+      }
+    } catch (err) {
+      setError("Failed to delete league");
+    }
+  }
+
   const isCreator = activeLeague?.created_by === user?.id;
 
   const weekends = Object.values(
@@ -525,16 +550,24 @@ function Leagues() {
                   <h2>{activeLeague.name}</h2>
                   <div className={styles.leagueActions}>
                     {isCreator && (
-                      <button
-                        className={styles.btnOutline}
-                        onClick={() => {
-                          setShowAddMember(!showAddMember);
-                          setAddMemberError("");
-                          setAddMemberSuccess("");
-                        }}
-                      >
-                        + Add member
-                      </button>
+                      <>
+                        <button
+                          className={styles.btnOutline}
+                          onClick={() => {
+                            setShowAddMember(!showAddMember);
+                            setAddMemberError("");
+                            setAddMemberSuccess("");
+                          }}
+                        >
+                          + Add member
+                        </button>
+                        <button
+                          className={styles.btnDanger}
+                          onClick={handleDelete}
+                        >
+                          Delete league
+                        </button>
+                      </>
                     )}
                     {!isCreator && (
                       <button
