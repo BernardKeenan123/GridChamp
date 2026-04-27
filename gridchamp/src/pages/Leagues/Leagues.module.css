@@ -494,3 +494,45 @@
     padding: 0.75rem 1rem;
   }
 }
+
+.btnDanger {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.btnDanger:hover {
+  background-color: rgba(232, 0, 45, 0.1);
+}
+
+.leagueActions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.addMemberForm {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background-color: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.removeBtn {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.removeBtn:hover {
+  color: var(--color-primary);
+  background-color: rgba(232, 0, 45, 0.1);
+}

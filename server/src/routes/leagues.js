@@ -5,35 +5,23 @@ import authMiddleware from '../middleware/auth.js'
 const router = express.Router()
 
 // Create a league
-// Creates a new league with optional settings and auto-joins the creator
 router.post('/', authMiddleware, async (req, res) => {
   const { name, prediction_slots, fastest_lap, driver_of_day, pole_bonus } = req.body
   if (!name) return res.status(400).json({ error: 'League name is required' })
 
   try {
     const pool = getPool()
-
-    // Generate a random 6-character invite code
     const code = Math.random().toString(36).substring(2, 8).toUpperCase()
 
     const result = await pool.query(
       `INSERT INTO leagues (name, code, created_by, prediction_slots, fastest_lap, driver_of_day, pole_bonus)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [
-        name,
-        code,
-        req.userId,
-        prediction_slots || 10,
-        fastest_lap || false,
-        driver_of_day || false,
-        pole_bonus || false,
-      ]
+      [name, code, req.userId, prediction_slots || 10, fastest_lap || false, driver_of_day || false, pole_bonus || false]
     )
 
     const league = result.rows[0]
 
-    // Auto-join the creator as a member
     await pool.query(
       'INSERT INTO league_members (league_id, user_id) VALUES ($1, $2)',
       [league.id, req.userId]
@@ -54,31 +42,18 @@ router.post('/join', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
 
-    const league = await pool.query(
-      'SELECT * FROM leagues WHERE code = $1',
-      [code.toUpperCase()]
-    )
-
-    if (league.rows.length === 0) {
-      return res.status(404).json({ error: 'League not found' })
-    }
+    const league = await pool.query('SELECT * FROM leagues WHERE code = $1', [code.toUpperCase()])
+    if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
 
     const leagueId = league.rows[0].id
 
-    // Check if already a member
     const existing = await pool.query(
       'SELECT * FROM league_members WHERE league_id = $1 AND user_id = $2',
       [leagueId, req.userId]
     )
+    if (existing.rows.length > 0) return res.status(400).json({ error: 'Already a member of this league' })
 
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: 'Already a member of this league' })
-    }
-
-    await pool.query(
-      'INSERT INTO league_members (league_id, user_id) VALUES ($1, $2)',
-      [leagueId, req.userId]
-    )
+    await pool.query('INSERT INTO league_members (league_id, user_id) VALUES ($1, $2)', [leagueId, req.userId])
 
     res.json({ message: 'Joined league successfully', league: league.rows[0] })
   } catch (err) {
@@ -87,8 +62,90 @@ router.post('/join', authMiddleware, async (req, res) => {
   }
 })
 
+// Add a member by username — creator only
+router.post('/:id/members', authMiddleware, async (req, res) => {
+  const { username } = req.body
+  if (!username) return res.status(400).json({ error: 'Username is required' })
+
+  try {
+    const pool = getPool()
+
+    // Check requester is the creator
+    const league = await pool.query('SELECT * FROM leagues WHERE id = $1', [req.params.id])
+    if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
+    if (league.rows[0].created_by !== req.userId) return res.status(403).json({ error: 'Only the league creator can add members' })
+
+    // Find the user by username
+    const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username])
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' })
+
+    const targetUser = userResult.rows[0]
+
+    // Check not already a member
+    const existing = await pool.query(
+      'SELECT * FROM league_members WHERE league_id = $1 AND user_id = $2',
+      [req.params.id, targetUser.id]
+    )
+    if (existing.rows.length > 0) return res.status(400).json({ error: 'User is already a member' })
+
+    await pool.query('INSERT INTO league_members (league_id, user_id) VALUES ($1, $2)', [req.params.id, targetUser.id])
+
+    res.json({ message: `${username} added to league` })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Remove a member — creator only
+router.delete('/:id/members/:userId', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool()
+
+    const league = await pool.query('SELECT * FROM leagues WHERE id = $1', [req.params.id])
+    if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
+    if (league.rows[0].created_by !== req.userId) return res.status(403).json({ error: 'Only the league creator can remove members' })
+
+    // Prevent creator removing themselves
+    if (parseInt(req.params.userId) === req.userId) return res.status(400).json({ error: 'Creator cannot remove themselves' })
+
+    await pool.query(
+      'DELETE FROM league_members WHERE league_id = $1 AND user_id = $2',
+      [req.params.id, req.params.userId]
+    )
+
+    res.json({ message: 'Member removed' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Leave a league — any member except the creator
+router.post('/:id/leave', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool()
+
+    const league = await pool.query('SELECT * FROM leagues WHERE id = $1', [req.params.id])
+    if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
+
+    if (league.rows[0].created_by === req.userId) {
+      return res.status(400).json({ error: 'League creator cannot leave. Delete the league instead.' })
+    }
+
+    await pool.query(
+      'DELETE FROM league_members WHERE league_id = $1 AND user_id = $2',
+      [req.params.id, req.userId]
+    )
+
+    res.json({ message: 'Left league successfully' })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // Get current user's leagues
-// Returns all leagues the user is a member of with member count and settings
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
@@ -112,7 +169,6 @@ router.get('/me', authMiddleware, async (req, res) => {
 })
 
 // Get a single league by ID
-// Returns full league details including settings — used by predict page
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
@@ -126,9 +182,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
       [req.params.id]
     )
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'League not found' })
-    }
+    if (result.rows.length === 0) return res.status(404).json({ error: 'League not found' })
 
     res.json(result.rows[0])
   } catch (err) {
@@ -137,8 +191,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
   }
 })
 
-//Get league standings
-// Returns members ranked by their league-specific points (league_id = this league)
+// Get league standings
 router.get('/:id/standings', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
@@ -164,27 +217,37 @@ router.get('/:id/standings', authMiddleware, async (req, res) => {
   }
 })
 
-// Update league settings
-// Only the league creator can update settings
+// Get league members list
+router.get('/:id/members', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool()
+
+    const result = await pool.query(
+      `SELECT u.id, u.username
+       FROM league_members lm
+       JOIN users u ON lm.user_id = u.id
+       WHERE lm.league_id = $1
+       ORDER BY u.username ASC`,
+      [req.params.id]
+    )
+
+    res.json(result.rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Update league settings — creator only
 router.patch('/:id', authMiddleware, async (req, res) => {
   const { prediction_slots, fastest_lap, driver_of_day, pole_bonus } = req.body
 
   try {
     const pool = getPool()
 
-    // Check the user is the league creator
-    const league = await pool.query(
-      'SELECT * FROM leagues WHERE id = $1',
-      [req.params.id]
-    )
-
-    if (league.rows.length === 0) {
-      return res.status(404).json({ error: 'League not found' })
-    }
-
-    if (league.rows[0].created_by !== req.userId) {
-      return res.status(403).json({ error: 'Only the league creator can update settings' })
-    }
+    const league = await pool.query('SELECT * FROM leagues WHERE id = $1', [req.params.id])
+    if (league.rows.length === 0) return res.status(404).json({ error: 'League not found' })
+    if (league.rows[0].created_by !== req.userId) return res.status(403).json({ error: 'Only the league creator can update settings' })
 
     const result = await pool.query(
       `UPDATE leagues
