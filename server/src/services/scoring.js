@@ -5,9 +5,9 @@ import { getSessionResults, getDrivers } from './openF1.js'
 const F1_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 
 // Bonus points
-const POLE_BONUS = 5
-const FASTEST_LAP_BONUS = 5
-const DRIVER_OF_DAY_BONUS = 3
+const POLE_BONUS = 2
+const FASTEST_LAP_BONUS = 1
+const DRIVER_OF_DAY_BONUS = 1
 
 // Award points for exact position prediction using F1 points system
 function calculatePoints(predictedPos, actualPos) {
