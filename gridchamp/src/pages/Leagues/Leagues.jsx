@@ -18,21 +18,18 @@ function Leagues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Create form state
   const [newLeagueName, setNewLeagueName] = useState("");
   const [predictionSlots, setPredictionSlots] = useState(10);
   const [fastestLap, setFastestLap] = useState(false);
   const [driverOfDay, setDriverOfDay] = useState(false);
   const [poleBonus, setPoleBonus] = useState(false);
 
-  // Member search during creation
   const [memberSearch, setMemberSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [memberSearchFocused, setMemberSearchFocused] = useState(false);
   const searchTimeout = useRef(null);
 
-  // Post-creation add member state
   const [addSearch, setAddSearch] = useState("");
   const [addSearchResults, setAddSearchResults] = useState([]);
   const [addMemberError, setAddMemberError] = useState("");
@@ -332,7 +329,6 @@ function Leagues() {
           </div>
         )}
 
-        {/* Create league form */}
         {showCreate && (
           <div className={styles.formCard}>
             <h3>Create a new league</h3>
@@ -449,7 +445,7 @@ function Leagues() {
                         <div
                           key={u.id}
                           className={styles.searchResult}
-                          onClick={() => selectMember(u)}
+                          onMouseDown={() => selectMember(u)}
                         >
                           {u.username}
                         </div>
@@ -551,7 +547,6 @@ function Leagues() {
                   </div>
                 </div>
 
-                {/* Post-creation add member */}
                 {showAddMember && isCreator && (
                   <div className={styles.addMemberForm}>
                     <div className={styles.memberSearch}>
@@ -574,7 +569,7 @@ function Leagues() {
                               <div
                                 key={u.id}
                                 className={styles.searchResult}
-                                onClick={() => handleAddMember(u)}
+                                onMouseDown={() => handleAddMember(u)}
                               >
                                 {u.username}
                               </div>
@@ -607,7 +602,6 @@ function Leagues() {
                   </div>
                 )}
 
-                {/* Standings */}
                 <div className={styles.tableWrapper}>
                   <div className={styles.tableHeader}>
                     <span>Rank</span>
@@ -655,7 +649,6 @@ function Leagues() {
                   })}
                 </div>
 
-                {/* Upcoming sessions */}
                 <div className={styles.leagueSessions}>
                   <h3>Upcoming sessions</h3>
                   {weekends.length === 0 ? (
