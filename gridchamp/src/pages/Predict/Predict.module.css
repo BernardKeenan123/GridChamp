@@ -4,7 +4,7 @@
 }
 
 .inner {
-  max-width: var(--max-width);
+  max-width: 600px;
   margin: 0 auto;
 }
 
@@ -16,9 +16,7 @@
   transition: color 0.2s;
 }
 
-.back:hover {
-  color: var(--color-text-primary);
-}
+.back:hover { color: var(--color-text-primary); }
 
 .sessionHeader {
   margin-bottom: 2rem;
@@ -28,11 +26,6 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-}
-
-.flag {
-  font-size: 2.5rem;
-  line-height: 1;
 }
 
 .sessionInfo h1 {
@@ -51,27 +44,41 @@
   color: var(--color-text-secondary);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  gap: 1.5rem;
-  align-items: start;
+.predictInner {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-.predictionSection h2,
-.driverPanel h2 {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+/* Progress bar */
+.progressBar {
+  height: 4px;
+  background-color: var(--color-border);
+  border-radius: 2px;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
 }
 
-.hint {
+.progressFill {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   margin-bottom: 1rem;
 }
 
-/* Prediction slots */
+.hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+/* Slots */
 .slots {
   display: flex;
   flex-direction: column;
@@ -79,36 +86,37 @@
   margin-bottom: 1.5rem;
 }
 
+/* Each slot is a position row */
 .slot {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.85rem 1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  min-height: 52px;
-}
-
-.slotEmpty {
   background-color: var(--color-bg-surface);
-  border-style: dashed;
-}
-
-.slotFilled {
-  background-color: var(--color-bg-elevated);
-  border-color: var(--color-border);
+  min-height: 56px;
+  padding: 0 1rem;
 }
 
 .slotPos {
   font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--color-text-secondary);
-  min-width: 28px;
+  min-width: 32px;
+}
+
+/* Filled slot contents */
+.slotFilled {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
 }
 
 .driverColour {
   width: 4px;
-  height: 28px;
+  height: 32px;
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -130,11 +138,6 @@
   color: var(--color-text-secondary);
 }
 
-.slotPlaceholder {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}
-
 .removeBtn {
   margin-left: auto;
   font-size: 0.75rem;
@@ -149,6 +152,93 @@
   background-color: rgba(232, 0, 45, 0.1);
 }
 
+/* Trigger button for empty slot */
+.slotTrigger {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.slotPlaceholder {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.slotChevron {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Dropdown */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  z-index: 100;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.teamGroup {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.teamGroup:last-child {
+  border-bottom: none;
+}
+
+.teamGroupLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.5rem 1rem 0.25rem;
+}
+
+.dropdownOption {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.dropdownOption:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.optionColour {
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.optionCode {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  min-width: 36px;
+}
+
+.optionName {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Submit button */
 .btnSubmit {
   width: 100%;
   padding: 0.9rem;
@@ -159,6 +249,7 @@
   font-weight: 600;
   font-family: inherit;
   transition: background-color 0.2s;
+  margin-top: 0.5rem;
 }
 
 .btnSubmit:hover:not(:disabled) {
@@ -169,107 +260,6 @@
   background-color: var(--color-bg-elevated);
   color: var(--color-text-muted);
   cursor: not-allowed;
-}
-
-/* Driver panel */
-.driverPanel {
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-  max-height: calc(100vh - 160px);
-  overflow-y: auto;
-}
-
-.driverList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.driverCard {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background-color: var(--color-bg-elevated);
-  transition: border-color 0.2s;
-}
-
-.driverCard:hover:not(.driverUsed) {
-  border-color: var(--color-text-muted);
-}
-
-.driverUsed {
-  opacity: 0.4;
-}
-
-.teamColour {
-  width: 4px;
-  height: 32px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.driverInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.driverCode {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-}
-
-.driverName {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-}
-
-.driverTeam {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-}
-
-.posButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  max-width: 180px;
-  justify-content: flex-end;
-}
-
-.posBtn {
-  padding: 0.2rem 0.4rem;
-  font-size: 0.7rem;
-  font-family: inherit;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  background-color: transparent;
-  transition: all 0.15s;
-}
-
-.posBtn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.posBtnTaken {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.usedLabel {
-  font-size: 0.75rem;
-  color: var(--color-success);
-  font-weight: 500;
-  padding: 0.25rem 0.5rem;
 }
 
 /* Success state */
@@ -321,6 +311,7 @@
   background-color: var(--color-primary-hover);
 }
 
+/* Bonus predictions */
 .bonusSection {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
@@ -338,8 +329,8 @@
   padding: 0.6rem 0.75rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   font-family: inherit;
   margin-top: 0.5rem;
@@ -354,24 +345,6 @@
 @media (max-width: 768px) {
   .page {
     padding: 1.25rem 1rem;
-    overflow-x: hidden;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .driverPanel {
-    max-height: none;
-    overflow-y: visible;
-  }
-
-  .posButtons {
-    display: none;
-  }
-
-  .driverCard {
-    cursor: pointer;
   }
 
   .sessionInfo h1 {
@@ -380,5 +353,9 @@
 
   .slotTeam {
     display: none;
+  }
+
+  .dropdown {
+    max-height: 260px;
   }
 }
