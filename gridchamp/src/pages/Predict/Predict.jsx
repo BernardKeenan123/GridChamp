@@ -31,6 +31,14 @@ const FALLBACK_DRIVERS = [
   { id: 20, code: "LAW", name: "Lawson", team: "Racing Bulls", colour: "#6692FF" },
 ];
 
+// Normalise Supabase timestamp to a valid UTC Date
+// Supabase returns timestamps with a space instead of T, e.g. "2026-05-01 20:30:00"
+function toUTC(dateStr) {
+  if (!dateStr) return null
+  const normalised = dateStr.replace(' ', 'T')
+  return new Date(normalised.endsWith('Z') ? normalised : normalised + 'Z')
+}
+
 // Group drivers by team for the dropdown
 function groupByTeam(drivers) {
   const groups = {};
@@ -274,7 +282,9 @@ function Predict() {
     );
   }
 
-  if (session && new Date() > new Date(session.scheduled_at)) {
+  // Check if predictions are closed using predictions_close_at, falling back to scheduled_at
+  const closeAt = session?.predictions_close_at || session?.scheduled_at;
+  if (session && closeAt && new Date() > toUTC(closeAt)) {
     return (
       <div className={styles.page}>
         <div className={styles.inner}>
@@ -331,7 +341,7 @@ function Predict() {
             <div>
               <h1>{session?.race_name} <span>— {session?.session_type}</span></h1>
               <p>
-                Round {session?.round} · {new Date(session?.scheduled_at).toLocaleString()}
+                Round {session?.round} · {toUTC(session?.scheduled_at)?.toLocaleString()}
                 {leagueId && league ? ` · ${league.name} · Top ${positions}` : ` · Global · Top ${positions}`}
               </p>
             </div>

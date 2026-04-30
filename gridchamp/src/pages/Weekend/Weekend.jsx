@@ -3,14 +3,24 @@ import { useParams, Link } from 'react-router-dom'
 import { sessionAPI } from '../../services/api'
 import styles from './Weekend.module.css'
 
+// Normalise Supabase timestamp to a valid UTC Date
+// Supabase returns timestamps with a space instead of T, e.g. "2026-05-01 20:30:00"
+function toUTC(dateStr) {
+  if (!dateStr) return null
+  const normalised = dateStr.replace(' ', 'T')
+  return new Date(normalised.endsWith('Z') ? normalised : normalised + 'Z')
+}
+
 // Countdown hook - returns a live countdown string to a target date
 function useCountdown(targetDate) {
   const [countdown, setCountdown] = useState('')
 
   useEffect(() => {
     function update() {
+      const target = toUTC(targetDate)
+      if (!target) return
+
       const now = new Date()
-      const target = new Date(targetDate + 'Z')
       const diff = target - now
 
       if (diff <= 0) {
@@ -41,7 +51,7 @@ function useCountdown(targetDate) {
 }
 
 function SessionCard({ session, predictionsCloseAt, isWeekendLocked }) {
-  const sessionTime = new Date(session.scheduled_at + 'Z')
+  const sessionTime = toUTC(session.scheduled_at)
   const countdown = useCountdown(predictionsCloseAt)
 
   return (
@@ -50,7 +60,7 @@ function SessionCard({ session, predictionsCloseAt, isWeekendLocked }) {
         <div>
           <div className={styles.sessionType}>{session.session_type}</div>
           <div className={styles.sessionTime}>
-            {sessionTime.toLocaleString()}
+            {sessionTime ? sessionTime.toLocaleString() : ''}
           </div>
           {/* Show countdown on all sessions until predictions close */}
           {!isWeekendLocked && !session.completed && (
@@ -88,7 +98,7 @@ function Weekend() {
         const all = await sessionAPI.getAll()
         const weekend = all
           .filter(s => s.round === parseInt(round))
-          .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+          .sort((a, b) => toUTC(a.scheduled_at) - toUTC(b.scheduled_at))
         setSessions(weekend)
       } catch (err) {
         console.error(err)
@@ -105,7 +115,7 @@ function Weekend() {
   // All sessions in a weekend share the same predictions_close_at
   const predictionsCloseAt = sessions[0]?.predictions_close_at
   const isWeekendLocked = predictionsCloseAt
-    ? new Date() > new Date(predictionsCloseAt + 'Z')
+    ? new Date() > toUTC(predictionsCloseAt)
     : false
 
   if (loading) {

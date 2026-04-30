@@ -6,6 +6,14 @@ import styles from "./Leagues.module.css";
 
 const SLOT_OPTIONS = [3, 5, 10, 20];
 
+// Normalise Supabase timestamp to a valid UTC Date
+// Supabase returns timestamps with a space instead of T, e.g. "2026-05-01 20:30:00"
+function toUTC(dateStr) {
+  if (!dateStr) return null;
+  const normalised = dateStr.replace(' ', 'T');
+  return new Date(normalised.endsWith('Z') ? normalised : normalised + 'Z');
+}
+
 function Leagues() {
   const { user } = useAuth();
   const [myLeagues, setMyLeagues] = useState([]);
@@ -594,7 +602,7 @@ function Leagues() {
                         {weekend.sessions.map((session) => {
                           // Use predictions_close_at if available, otherwise fall back to scheduled_at
                           const closeAt = session.predictions_close_at || session.scheduled_at;
-                          const isLocked = new Date(closeAt + 'Z') < new Date();
+                          const isLocked = toUTC(closeAt) < new Date();
                           return (
                             <div key={session.id} className={styles.sessionRow}>
                               <span className={styles.sessionType}>{session.session_type}</span>

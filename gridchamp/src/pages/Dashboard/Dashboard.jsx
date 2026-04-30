@@ -24,19 +24,24 @@ function groupByRaceWeekend(sessions) {
   return Object.values(groups).sort((a, b) => a.round - b.round);
 }
 
+function toUTC(dateStr) {
+  if (!dateStr) return null
+  const normalised = dateStr.replace(' ', 'T')
+  return new Date(normalised.endsWith('Z') ? normalised : normalised + 'Z')
+}
+
 function getWeekendStatus(weekend) {
-  const now = new Date();
+  const now = new Date()
 
-  const allCompleted = weekend.sessions.every((s) => s.completed);
-  if (allCompleted) return "completed";
+  const allCompleted = weekend.sessions.every((s) => s.completed)
+  if (allCompleted) return 'completed'
 
-  // Use predictions_close_at if available, otherwise fall back to first session scheduled_at
-  const closeAt = weekend.sessions[0]?.predictions_close_at || weekend.sessions[0]?.scheduled_at;
-  const isLocked = closeAt ? new Date() > new Date(closeAt + 'Z') : false;
+  const closeAt = weekend.sessions[0]?.predictions_close_at || weekend.sessions[0]?.scheduled_at
+  const isLocked = closeAt ? now > toUTC(closeAt) : false
 
-  if (isLocked) return "live";
+  if (isLocked) return 'live'
 
-  return "open";
+  return 'open'
 }
 
 function RaceWeekendCard({ weekend }) {
