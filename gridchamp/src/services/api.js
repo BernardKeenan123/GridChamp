@@ -1,7 +1,12 @@
+// Central API service layer, all backend requests go through here
+// The request helper attaches the JWT token automatically to every call
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
+// Retrieve the stored JWT token from localStorage
 const getToken = () => localStorage.getItem('token')
 
+// Generic fetch wrapper, attaches auth headers and throws on non-OK responses
 const request = async (endpoint, options = {}) => {
   const token = getToken()
 
@@ -23,6 +28,7 @@ const request = async (endpoint, options = {}) => {
   return data
 }
 
+// Auth - register and login
 export const authAPI = {
   register: (username, password) =>
     request('/api/auth/register', {
@@ -37,15 +43,18 @@ export const authAPI = {
     }),
 }
 
+// Users
 export const userAPI = {
   getMe: () => request('/api/users/me'),
 }
 
+// Sessions
 export const sessionAPI = {
   getAll: () => request('/api/sessions'),
   getOne: (id) => request(`/api/sessions/${id}`),
 }
 
+// Predictions - submit and retrieve per session/league
 export const predictionAPI = {
   submit: (sessionId, predictions, options = {}) =>
     request(`/api/predictions/${sessionId}`, {
@@ -53,21 +62,26 @@ export const predictionAPI = {
       body: JSON.stringify({ predictions, ...options }),
     }),
 
+  // leagueId null returns global predictions
   getForSession: (sessionId, leagueId = null) =>
     request(`/api/predictions/${sessionId}${leagueId ? `?league_id=${leagueId}` : ''}`),
 }
 
+// Scores
 export const scoreAPI = {
   getMyTotal: () => request('/api/scores/me'),
+  // leagueId null returns global scores
   getSessionScores: (sessionId, leagueId = null) =>
     request(`/api/scores/session/${sessionId}${leagueId ? `?league_id=${leagueId}` : ''}`),
 }
 
+// Leaderboard
 export const leaderboardAPI = {
   getGlobal: () => request('/api/leaderboard'),
   getFriends: () => request('/api/leaderboard/friends'),
 }
 
+// Leagues
 export const leagueAPI = {
   getMyLeagues: () => request('/api/leagues/me'),
   getOne: (id) => request(`/api/leagues/${id}`),
@@ -75,11 +89,6 @@ export const leagueAPI = {
     request('/api/leagues', {
       method: 'POST',
       body: JSON.stringify({ name, ...settings }),
-    }),
-  join: (code) =>
-    request('/api/leagues/join', {
-      method: 'POST',
-      body: JSON.stringify({ code }),
     }),
   getStandings: (id) => request(`/api/leagues/${id}/standings`),
   updateSettings: (id, settings) =>

@@ -5,6 +5,7 @@ import authMiddleware from '../middleware/auth.js'
 const router = express.Router()
 
 // Get current user profile
+// Returns safe profile fields only, password hash is never returned
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
@@ -25,8 +26,9 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 })
 
-// Search users by username — returns all users when query is empty
-// Excludes the requesting user from results
+// Search users by username
+// Returns all users when query is empty, used to populate league member dropdowns
+// Filters by query string when provided, always excludes the requesting user
 router.get('/search', authMiddleware, async (req, res) => {
   const { q } = req.query
 
@@ -35,7 +37,6 @@ router.get('/search', authMiddleware, async (req, res) => {
 
     let result
     if (!q || q.length === 0) {
-      // Return all users except the requesting user
       result = await pool.query(
         `SELECT id, username FROM users 
          WHERE id != $1 

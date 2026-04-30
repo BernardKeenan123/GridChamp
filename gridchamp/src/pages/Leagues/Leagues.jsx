@@ -18,18 +18,21 @@ function Leagues() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Create league form state
   const [newLeagueName, setNewLeagueName] = useState("");
   const [predictionSlots, setPredictionSlots] = useState(10);
   const [fastestLap, setFastestLap] = useState(false);
   const [driverOfDay, setDriverOfDay] = useState(false);
   const [poleBonus, setPoleBonus] = useState(false);
 
+  // Member search during league creation
   const [memberSearch, setMemberSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [memberSearchFocused, setMemberSearchFocused] = useState(false);
   const searchTimeout = useRef(null);
 
+  // Post-creation add member search
   const [addSearch, setAddSearch] = useState("");
   const [addSearchResults, setAddSearchResults] = useState([]);
   const [addMemberError, setAddMemberError] = useState("");
@@ -37,9 +40,9 @@ function Leagues() {
   const [addSearchFocused, setAddSearchFocused] = useState(false);
   const addSearchTimeout = useRef(null);
 
-  // Inline confirmation state
+  // Inline confirmation — replaces browser confirm() for mobile compatibility
+  // Shape: { type: 'leave' | 'delete' | 'remove', userId?, username?, label }
   const [confirmAction, setConfirmAction] = useState(null);
-  // confirmAction shape: { type: 'leave' | 'delete' | 'remove', userId?, username?, label }
 
   useEffect(() => {
     loadLeagues();
@@ -88,7 +91,7 @@ function Leagues() {
       const token = localStorage.getItem("token");
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/leagues/${leagueId}/members`,
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
       setMembers(data);
@@ -97,6 +100,7 @@ function Leagues() {
     }
   }
 
+  // Search users by username — returns all users when query is empty
   async function searchUsers(q, setResults) {
     try {
       const token = localStorage.getItem("token");
@@ -104,9 +108,7 @@ function Leagues() {
         q && q.length > 0
           ? `${import.meta.env.VITE_API_URL}/api/users/search?q=${encodeURIComponent(q)}`
           : `${import.meta.env.VITE_API_URL}/api/users/search`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setResults(data);
     } catch (err) {
@@ -118,10 +120,7 @@ function Leagues() {
     const q = e.target.value;
     setMemberSearch(q);
     clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(
-      () => searchUsers(q, setSearchResults),
-      200,
-    );
+    searchTimeout.current = setTimeout(() => searchUsers(q, setSearchResults), 200);
   }
 
   function handleMemberSearchFocus() {
@@ -133,10 +132,7 @@ function Leagues() {
     const q = e.target.value;
     setAddSearch(q);
     clearTimeout(addSearchTimeout.current);
-    addSearchTimeout.current = setTimeout(
-      () => searchUsers(q, setAddSearchResults),
-      200,
-    );
+    addSearchTimeout.current = setTimeout(() => searchUsers(q, setAddSearchResults), 200);
   }
 
   function handleAddSearchFocus() {
@@ -160,12 +156,11 @@ function Leagues() {
     if (!newLeagueName.trim()) return;
     try {
       const token = localStorage.getItem("token");
+
+      // Create the league
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/leagues`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           name: newLeagueName,
           prediction_slots: predictionSlots,
@@ -176,18 +171,13 @@ function Leagues() {
       });
       const league = await res.json();
 
+      // Add each selected member to the new league
       for (const member of selectedMembers) {
-        await fetch(
-          `${import.meta.env.VITE_API_URL}/api/leagues/${league.id}/members`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ username: member.username }),
-          },
-        );
+        await fetch(`${import.meta.env.VITE_API_URL}/api/leagues/${league.id}/members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ username: member.username }),
+        });
       }
 
       setNewLeagueName("");
@@ -214,12 +204,9 @@ function Leagues() {
         `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/members`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ username: u.username }),
-        },
+        }
       );
       const data = await res.json();
       if (!res.ok) {
@@ -237,6 +224,7 @@ function Leagues() {
     }
   }
 
+  // Executes whichever destructive action the user confirmed in the inline dialog
   async function executeConfirmedAction() {
     if (!confirmAction) return;
     const token = localStorage.getItem("token");
@@ -245,14 +233,14 @@ function Leagues() {
       if (confirmAction.type === "remove") {
         await fetch(
           `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/members/${confirmAction.userId}`,
-          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
         );
         await loadMembers(activeLeague.id);
         await loadLeagues();
       } else if (confirmAction.type === "leave") {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}/leave`,
-          { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+          { method: "POST", headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.ok) {
           await loadLeagues();
@@ -264,7 +252,7 @@ function Leagues() {
       } else if (confirmAction.type === "delete") {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/leagues/${activeLeague.id}`,
-          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.ok) {
           await loadLeagues();
@@ -294,15 +282,13 @@ function Leagues() {
       }
       groups[session.race_name].sessions.push(session);
       return groups;
-    }, {}),
+    }, {})
   ).sort((a, b) => a.round - b.round);
 
   if (loading) {
     return (
       <div className={styles.page}>
-        <p style={{ padding: "2rem", color: "var(--color-text-secondary)" }}>
-          Loading...
-        </p>
+        <p style={{ padding: "2rem", color: "var(--color-text-secondary)" }}>Loading...</p>
       </div>
     );
   }
@@ -316,48 +302,30 @@ function Leagues() {
             <p>Compete in private leagues with friends and family</p>
           </div>
           <div className={styles.headerActions}>
-            <button
-              className={styles.btnPrimary}
-              onClick={() => setShowCreate(true)}
-            >
+            <button className={styles.btnPrimary} onClick={() => setShowCreate(true)}>
               Create league
             </button>
           </div>
         </div>
 
         {error && (
-          <div
-            style={{
-              color: "var(--color-primary)",
-              marginBottom: "1rem",
-              fontSize: "var(--font-size-sm)",
-            }}
-          >
+          <div style={{ color: "var(--color-primary)", marginBottom: "1rem", fontSize: "var(--font-size-sm)" }}>
             {error}
           </div>
         )}
 
-        {/* Inline confirmation dialog */}
+        {/* Inline confirmation dialog — replaces browser confirm() for mobile */}
         {confirmAction && (
           <div className={styles.confirmBox}>
             <p>{confirmAction.label}</p>
             <div className={styles.confirmActions}>
-              <button
-                className={styles.btnOutline}
-                onClick={() => setConfirmAction(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className={styles.btnDanger}
-                onClick={executeConfirmedAction}
-              >
-                Confirm
-              </button>
+              <button className={styles.btnOutline} onClick={() => setConfirmAction(null)}>Cancel</button>
+              <button className={styles.btnDanger} onClick={executeConfirmedAction}>Confirm</button>
             </div>
           </div>
         )}
 
+        {/* Create league form */}
         {showCreate && (
           <div className={styles.formCard}>
             <h3>Create a new league</h3>
@@ -376,9 +344,7 @@ function Leagues() {
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Positions to predict</label>
-              <p className={styles.settingDesc}>
-                How many finishing positions members must predict per session.
-              </p>
+              <p className={styles.settingDesc}>How many finishing positions members must predict per session.</p>
               <div className={styles.slotOptions}>
                 {SLOT_OPTIONS.map((n) => (
                   <button
@@ -394,53 +360,32 @@ function Leagues() {
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Bonus predictions</label>
-              <p className={styles.settingDesc}>
-                Optional extra predictions members can make each session.
-              </p>
+              <p className={styles.settingDesc}>Optional extra predictions members can make each session.</p>
               <div className={styles.toggleList}>
                 <div className={styles.toggleRow}>
                   <div>
                     <span className={styles.toggleLabel}>Fastest lap</span>
-                    <span className={styles.toggleDesc}>
-                      Predict which driver sets the fastest lap
-                    </span>
+                    <span className={styles.toggleDesc}>Predict which driver sets the fastest lap</span>
                   </div>
-                  <button
-                    className={`${styles.toggle} ${fastestLap ? styles.toggleOn : ""}`}
-                    onClick={() => setFastestLap(!fastestLap)}
-                  >
+                  <button className={`${styles.toggle} ${fastestLap ? styles.toggleOn : ""}`} onClick={() => setFastestLap(!fastestLap)}>
                     {fastestLap ? "On" : "Off"}
                   </button>
                 </div>
                 <div className={styles.toggleRow}>
                   <div>
-                    <span className={styles.toggleLabel}>
-                      Driver of the day
-                    </span>
-                    <span className={styles.toggleDesc}>
-                      Predict which driver wins driver of the day
-                    </span>
+                    <span className={styles.toggleLabel}>Driver of the day</span>
+                    <span className={styles.toggleDesc}>Predict which driver wins driver of the day</span>
                   </div>
-                  <button
-                    className={`${styles.toggle} ${driverOfDay ? styles.toggleOn : ""}`}
-                    onClick={() => setDriverOfDay(!driverOfDay)}
-                  >
+                  <button className={`${styles.toggle} ${driverOfDay ? styles.toggleOn : ""}`} onClick={() => setDriverOfDay(!driverOfDay)}>
                     {driverOfDay ? "On" : "Off"}
                   </button>
                 </div>
                 <div className={styles.toggleRow}>
                   <div>
-                    <span className={styles.toggleLabel}>
-                      Pole position bonus
-                    </span>
-                    <span className={styles.toggleDesc}>
-                      Correctly predicting P1 in qualifying earns bonus points
-                    </span>
+                    <span className={styles.toggleLabel}>Pole position bonus</span>
+                    <span className={styles.toggleDesc}>Correctly predicting P1 in qualifying earns bonus points</span>
                   </div>
-                  <button
-                    className={`${styles.toggle} ${poleBonus ? styles.toggleOn : ""}`}
-                    onClick={() => setPoleBonus(!poleBonus)}
-                  >
+                  <button className={`${styles.toggle} ${poleBonus ? styles.toggleOn : ""}`} onClick={() => setPoleBonus(!poleBonus)}>
                     {poleBonus ? "On" : "Off"}
                   </button>
                 </div>
@@ -449,9 +394,7 @@ function Leagues() {
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Add members</label>
-              <p className={styles.settingDesc}>
-                Click the box to see all users, or type to filter.
-              </p>
+              <p className={styles.settingDesc}>Click the box to see all users, or type to filter.</p>
               <div className={styles.memberSearch}>
                 <input
                   type="text"
@@ -459,23 +402,15 @@ function Leagues() {
                   value={memberSearch}
                   onChange={handleMemberSearchChange}
                   onFocus={handleMemberSearchFocus}
-                  onBlur={() =>
-                    setTimeout(() => setMemberSearchFocused(false), 150)
-                  }
+                  onBlur={() => setTimeout(() => setMemberSearchFocused(false), 150)}
                   className={styles.input}
                 />
                 {memberSearchFocused && searchResults.length > 0 && (
                   <div className={styles.searchResults}>
                     {searchResults
-                      .filter(
-                        (u) => !selectedMembers.find((m) => m.id === u.id),
-                      )
+                      .filter((u) => !selectedMembers.find((m) => m.id === u.id))
                       .map((u) => (
-                        <div
-                          key={u.id}
-                          className={styles.searchResult}
-                          onMouseDown={() => selectMember(u)}
-                        >
+                        <div key={u.id} className={styles.searchResult} onMouseDown={() => selectMember(u)}>
                           {u.username}
                         </div>
                       ))}
@@ -487,12 +422,7 @@ function Leagues() {
                   {selectedMembers.map((m) => (
                     <div key={m.id} className={styles.memberTag}>
                       {m.username}
-                      <span
-                        className={styles.memberTagRemove}
-                        onClick={() => removeMember(m.id)}
-                      >
-                        ✕
-                      </span>
+                      <span className={styles.memberTagRemove} onClick={() => removeMember(m.id)}>✕</span>
                     </div>
                   ))}
                 </div>
@@ -502,12 +432,7 @@ function Leagues() {
             <div className={styles.formActions}>
               <button
                 className={styles.btnOutline}
-                onClick={() => {
-                  setShowCreate(false);
-                  setSelectedMembers([]);
-                  setMemberSearch("");
-                  setSearchResults([]);
-                }}
+                onClick={() => { setShowCreate(false); setSelectedMembers([]); setMemberSearch(""); setSearchResults([]); }}
               >
                 Cancel
               </button>
@@ -557,22 +482,13 @@ function Leagues() {
                       <>
                         <button
                           className={styles.btnOutline}
-                          onClick={() => {
-                            setShowAddMember(!showAddMember);
-                            setAddMemberError("");
-                            setAddMemberSuccess("");
-                          }}
+                          onClick={() => { setShowAddMember(!showAddMember); setAddMemberError(""); setAddMemberSuccess(""); }}
                         >
                           + Add member
                         </button>
                         <button
                           className={styles.btnDanger}
-                          onClick={() =>
-                            setConfirmAction({
-                              type: "delete",
-                              label: `Permanently delete "${activeLeague.name}"? This cannot be undone.`,
-                            })
-                          }
+                          onClick={() => setConfirmAction({ type: "delete", label: `Permanently delete "${activeLeague.name}"? This cannot be undone.` })}
                         >
                           Delete league
                         </button>
@@ -581,12 +497,7 @@ function Leagues() {
                     {!isCreator && (
                       <button
                         className={styles.btnDanger}
-                        onClick={() =>
-                          setConfirmAction({
-                            type: "leave",
-                            label: `Leave ${activeLeague.name}?`,
-                          })
-                        }
+                        onClick={() => setConfirmAction({ type: "leave", label: `Leave ${activeLeague.name}?` })}
                       >
                         Leave league
                       </button>
@@ -594,6 +505,7 @@ function Leagues() {
                   </div>
                 </div>
 
+                {/* Post-creation add member search */}
                 {showAddMember && isCreator && (
                   <div className={styles.addMemberForm}>
                     <div className={styles.memberSearch}>
@@ -603,9 +515,7 @@ function Leagues() {
                         value={addSearch}
                         onChange={handleAddSearchChange}
                         onFocus={handleAddSearchFocus}
-                        onBlur={() =>
-                          setTimeout(() => setAddSearchFocused(false), 150)
-                        }
+                        onBlur={() => setTimeout(() => setAddSearchFocused(false), 150)}
                         className={styles.input}
                       />
                       {addSearchFocused && addSearchResults.length > 0 && (
@@ -613,11 +523,7 @@ function Leagues() {
                           {addSearchResults
                             .filter((u) => !members.find((m) => m.id === u.id))
                             .map((u) => (
-                              <div
-                                key={u.id}
-                                className={styles.searchResult}
-                                onMouseDown={() => handleAddMember(u)}
-                              >
+                              <div key={u.id} className={styles.searchResult} onMouseDown={() => handleAddMember(u)}>
                                 {u.username}
                               </div>
                             ))}
@@ -625,30 +531,19 @@ function Leagues() {
                       )}
                     </div>
                     {addMemberError && (
-                      <p
-                        style={{
-                          color: "var(--color-primary)",
-                          fontSize: "var(--font-size-sm)",
-                          marginTop: "0.5rem",
-                        }}
-                      >
+                      <p style={{ color: "var(--color-primary)", fontSize: "var(--font-size-sm)", marginTop: "0.5rem" }}>
                         {addMemberError}
                       </p>
                     )}
                     {addMemberSuccess && (
-                      <p
-                        style={{
-                          color: "var(--color-success)",
-                          fontSize: "var(--font-size-sm)",
-                          marginTop: "0.5rem",
-                        }}
-                      >
+                      <p style={{ color: "var(--color-success)", fontSize: "var(--font-size-sm)", marginTop: "0.5rem" }}>
                         {addMemberSuccess}
                       </p>
                     )}
                   </div>
                 )}
 
+                {/* League standings table */}
                 <div className={styles.tableWrapper}>
                   <div className={styles.tableHeader}>
                     <span>Rank</span>
@@ -660,37 +555,21 @@ function Leagues() {
                     const rank = index + 1;
                     const isUser = row.id === user.id;
                     return (
-                      <div
-                        key={row.id}
-                        className={`${styles.tableRow} ${isUser ? styles.userRow : ""}`}
-                      >
+                      <div key={row.id} className={`${styles.tableRow} ${isUser ? styles.userRow : ""}`}>
                         <span className={styles.rank}>
-                          {rank <= 3
-                            ? ["🥇", "🥈", "🥉"][rank - 1]
-                            : `#${rank}`}
+                          {rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : `#${rank}`}
                         </span>
-                        <span
-                          className={`${styles.username} ${isUser ? styles.userHighlight : ""}`}
-                        >
+                        <span className={`${styles.username} ${isUser ? styles.userHighlight : ""}`}>
                           {row.username}
                           {isUser && <span className={styles.youTag}>You</span>}
                         </span>
-                        <span
-                          className={`${styles.points} ${isUser ? styles.userPoints : ""}`}
-                        >
+                        <span className={`${styles.points} ${isUser ? styles.userPoints : ""}`}>
                           {row.total_points}
                         </span>
                         {isCreator && !isUser && (
                           <button
                             className={styles.removeBtn}
-                            onClick={() =>
-                              setConfirmAction({
-                                type: "remove",
-                                userId: row.id,
-                                username: row.username,
-                                label: `Remove ${row.username} from this league?`,
-                              })
-                            }
+                            onClick={() => setConfirmAction({ type: "remove", userId: row.id, username: row.username, label: `Remove ${row.username} from this league?` })}
                           >
                             ✕
                           </button>
@@ -701,41 +580,26 @@ function Leagues() {
                   })}
                 </div>
 
+                {/* Upcoming sessions for this league */}
                 <div className={styles.leagueSessions}>
                   <h3>Upcoming sessions</h3>
                   {weekends.length === 0 ? (
-                    <p
-                      style={{
-                        color: "var(--color-text-secondary)",
-                        fontSize: "var(--font-size-sm)",
-                      }}
-                    >
+                    <p style={{ color: "var(--color-text-secondary)", fontSize: "var(--font-size-sm)" }}>
                       No upcoming sessions.
                     </p>
                   ) : (
                     weekends.map((weekend) => (
-                      <div
-                        key={weekend.race_name}
-                        className={styles.weekendGroup}
-                      >
-                        <span className={styles.weekendName}>
-                          {weekend.race_name}
-                        </span>
+                      <div key={weekend.race_name} className={styles.weekendGroup}>
+                        <span className={styles.weekendName}>{weekend.race_name}</span>
                         {weekend.sessions.map((session) => {
-                          const isLocked =
-                            new Date(session.scheduled_at) < new Date();
+                          const isLocked = new Date(session.scheduled_at) < new Date();
                           return (
                             <div key={session.id} className={styles.sessionRow}>
-                              <span className={styles.sessionType}>
-                                {session.session_type}
-                              </span>
+                              <span className={styles.sessionType}>{session.session_type}</span>
                               {isLocked ? (
                                 <span className={styles.locked}>Locked</span>
                               ) : (
-                                <Link
-                                  to={`/predict/${session.id}?league_id=${activeLeague.id}`}
-                                  className={styles.btnPredict}
-                                >
+                                <Link to={`/predict/${session.id}?league_id=${activeLeague.id}`} className={styles.btnPredict}>
                                   Predict
                                 </Link>
                               )}
