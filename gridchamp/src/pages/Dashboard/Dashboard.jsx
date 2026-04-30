@@ -27,17 +27,15 @@ function groupByRaceWeekend(sessions) {
 function getWeekendStatus(weekend) {
   const now = new Date();
 
-  // If all sessions are completed, show results
   const allCompleted = weekend.sessions.every((s) => s.completed);
   if (allCompleted) return "completed";
 
-  // If any session has started but weekend not complete, it's live
-  const anyStarted = weekend.sessions.some(
-    (s) => new Date(s.scheduled_at) < now,
-  );
-  if (anyStarted) return "live";
+  // Use predictions_close_at if available, otherwise fall back to first session scheduled_at
+  const closeAt = weekend.sessions[0]?.predictions_close_at || weekend.sessions[0]?.scheduled_at;
+  const isLocked = closeAt ? new Date() > new Date(closeAt + 'Z') : false;
 
-  // Otherwise predictions are open
+  if (isLocked) return "live";
+
   return "open";
 }
 
@@ -45,7 +43,7 @@ function RaceWeekendCard({ weekend }) {
   const status = getWeekendStatus(weekend);
   const sessionCount = weekend.sessions.length;
 
-  // For results link — use the last session of the weekend
+  // Use the last session of the weekend for the results link
   const lastSession = weekend.sessions[weekend.sessions.length - 1];
 
   const statusLabel = {
@@ -107,7 +105,7 @@ function Dashboard() {
             leagueAPI.getMyLeagues(),
           ]);
 
-        // Show all sessions — completed ones show results, upcoming show predict
+        // Show all sessions - completed ones show results, upcoming show predict
         const grouped = groupByRaceWeekend(sessionsData);
         setWeekends(grouped);
         setTotalPoints(scoreData.total);
@@ -136,7 +134,7 @@ function Dashboard() {
   }
 
   const upcomingCount = weekends.filter(
-    (w) => getWeekendStatus(w) !== "completed",
+    (w) => getWeekendStatus(w) !== "completed"
   ).length;
 
   return (

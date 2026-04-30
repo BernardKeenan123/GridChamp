@@ -3,10 +3,46 @@ import { useParams, Link } from 'react-router-dom'
 import { sessionAPI } from '../../services/api'
 import styles from './Weekend.module.css'
 
-function SessionCard({ session }) {
-  const now = new Date()
-  const sessionTime = new Date(session.scheduled_at)
-  const isLocked = now > sessionTime
+// Countdown hook - returns a live countdown string to a target date
+function useCountdown(targetDate) {
+  const [countdown, setCountdown] = useState('')
+
+  useEffect(() => {
+    function update() {
+      const now = new Date()
+      const target = new Date(targetDate + 'Z')
+      const diff = target - now
+
+      if (diff <= 0) {
+        setCountdown('Locked')
+        return
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const secs = Math.floor((diff % (1000 * 60)) / 1000)
+
+      if (days > 0) {
+        setCountdown(`${days}d ${hours}h ${mins}m`)
+      } else if (hours > 0) {
+        setCountdown(`${hours}h ${mins}m ${secs}s`)
+      } else {
+        setCountdown(`${mins}m ${secs}s`)
+      }
+    }
+
+    update()
+    const interval = setInterval(update, 1000)
+    return () => clearInterval(interval)
+  }, [targetDate])
+
+  return countdown
+}
+
+function SessionCard({ session, predictionsCloseAt, isWeekendLocked }) {
+  const sessionTime = new Date(session.scheduled_at + 'Z')
+  const countdown = useCountdown(predictionsCloseAt)
 
   return (
     <div className={styles.sessionCard}>
@@ -16,6 +52,12 @@ function SessionCard({ session }) {
           <div className={styles.sessionTime}>
             {sessionTime.toLocaleString()}
           </div>
+          {/* Show countdown on all sessions until predictions close */}
+          {!isWeekendLocked && !session.completed && (
+            <div className={styles.countdown}>
+              Predictions close in {countdown}
+            </div>
+          )}
         </div>
       </div>
       <div className={styles.sessionRight}>
@@ -23,7 +65,7 @@ function SessionCard({ session }) {
           <Link to={`/results/${session.id}`} className={styles.btnResults}>
             View results
           </Link>
-        ) : isLocked ? (
+        ) : isWeekendLocked ? (
           <span className={styles.locked}>Locked</span>
         ) : (
           <Link to={`/predict/${session.id}`} className={styles.btnPredict}>
@@ -60,6 +102,12 @@ function Weekend() {
   const raceName = sessions[0]?.race_name || 'Race Weekend'
   const roundNum = sessions[0]?.round
 
+  // All sessions in a weekend share the same predictions_close_at
+  const predictionsCloseAt = sessions[0]?.predictions_close_at
+  const isWeekendLocked = predictionsCloseAt
+    ? new Date() > new Date(predictionsCloseAt + 'Z')
+    : false
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -78,7 +126,12 @@ function Weekend() {
         </p>
         <div className={styles.sessionList}>
           {sessions.map(s => (
-            <SessionCard key={s.id} session={s} />
+            <SessionCard
+              key={s.id}
+              session={s}
+              predictionsCloseAt={predictionsCloseAt}
+              isWeekendLocked={isWeekendLocked}
+            />
           ))}
         </div>
       </div>

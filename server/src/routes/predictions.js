@@ -4,7 +4,7 @@ import authMiddleware from '../middleware/auth.js'
 
 const router = express.Router()
 
-// ── Submit predictions for a session ─────────────────────────────────────────
+// Submit predictions for a session
 // Accepts an array of predictions and an optional league_id
 // If league_id is provided, predictions are stored for that league
 // If no league_id, predictions are global (null league_id)
@@ -12,7 +12,6 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
   const { sessionId } = req.params
   const { predictions, league_id, fastest_lap, driver_of_day } = req.body
 
-  // Validate that predictions array was provided
   if (!predictions || !Array.isArray(predictions)) {
     return res.status(400).json({ error: 'Predictions must be an array' })
   }
@@ -20,7 +19,6 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
   try {
     const pool = getPool()
 
-    // Check session exists
     const session = await pool.query(
       'SELECT * FROM sessions WHERE id = $1',
       [sessionId]
@@ -30,10 +28,11 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Session not found' })
     }
 
-    // Check prediction window using scheduled_at time
+    // Use predictions_close_at if set, otherwise fall back to session start time
     const now = new Date()
-    const sessionTime = new Date(session.rows[0].scheduled_at)
-    if (now > sessionTime) {
+    const closeAt = session.rows[0].predictions_close_at || session.rows[0].scheduled_at
+    const closeTime = new Date(closeAt)
+    if (now > closeTime) {
       return res.status(400).json({ error: 'Predictions are closed for this session' })
     }
 
@@ -48,8 +47,7 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
       }
     }
 
-    // Delete existing predictions for this user/session/league before inserting
-    // This allows users to update predictions before the session locks
+    // Delete existing predictions before inserting to allow updates before lock
     await pool.query(
       'DELETE FROM predictions WHERE user_id = $1 AND session_id = $2 AND league_id IS NOT DISTINCT FROM $3',
       [req.userId, sessionId, league_id || null]
@@ -89,8 +87,7 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
   }
 })
 
-// ── Get user's predictions for a session ─────────────────────────────────────
-// Returns predictions for a specific session, optionally filtered by league
+// Get user's predictions for a session, optionally filtered by league
 // If no league_id query param, returns global predictions
 router.get('/:sessionId', authMiddleware, async (req, res) => {
   try {

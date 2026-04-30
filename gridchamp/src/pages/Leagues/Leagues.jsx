@@ -40,7 +40,7 @@ function Leagues() {
   const [addSearchFocused, setAddSearchFocused] = useState(false);
   const addSearchTimeout = useRef(null);
 
-  // Inline confirmation — replaces browser confirm() for mobile compatibility
+  // Inline confirmation - replaces browser confirm() for mobile compatibility
   // Shape: { type: 'leave' | 'delete' | 'remove', userId?, username?, label }
   const [confirmAction, setConfirmAction] = useState(null);
 
@@ -100,7 +100,7 @@ function Leagues() {
     }
   }
 
-  // Search users by username — returns all users when query is empty
+  // Search users by username - returns all users when query is empty
   async function searchUsers(q, setResults) {
     try {
       const token = localStorage.getItem("token");
@@ -314,7 +314,7 @@ function Leagues() {
           </div>
         )}
 
-        {/* Inline confirmation dialog — replaces browser confirm() for mobile */}
+        {/* Inline confirmation dialog - replaces browser confirm() for mobile */}
         {confirmAction && (
           <div className={styles.confirmBox}>
             <p>{confirmAction.label}</p>
@@ -592,7 +592,9 @@ function Leagues() {
                       <div key={weekend.race_name} className={styles.weekendGroup}>
                         <span className={styles.weekendName}>{weekend.race_name}</span>
                         {weekend.sessions.map((session) => {
-                          const isLocked = new Date(session.scheduled_at) < new Date();
+                          // Use predictions_close_at if available, otherwise fall back to scheduled_at
+                          const closeAt = session.predictions_close_at || session.scheduled_at;
+                          const isLocked = new Date(closeAt + 'Z') < new Date();
                           return (
                             <div key={session.id} className={styles.sessionRow}>
                               <span className={styles.sessionType}>{session.session_type}</span>
