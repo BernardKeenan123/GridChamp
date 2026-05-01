@@ -106,7 +106,7 @@ router.get('/:sessionId', authMiddleware, async (req, res) => {
     res.json(result.rows)
   } catch (err) {
     console.error(err)
-    res.status(500).json({ error: 'Server error' })
+    res.status(500).json({ error: err.message })
   }
 })
 
