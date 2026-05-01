@@ -83,7 +83,7 @@ router.post('/:sessionId', authMiddleware, async (req, res) => {
     res.status(201).json({ message: 'Predictions submitted successfully' })
   } catch (err) {
     console.error(err)
-    res.status(500).json({ error: 'Server error' })
+    res.status(500).json({ error: err.message })
   }
 })
 
