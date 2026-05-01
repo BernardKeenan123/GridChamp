@@ -1,85 +1,21 @@
-import express from 'express'
-import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { getPool } from '../db/index.js'
 
-const router = express.Router()
+// Verifies the JWT token from the Authorization header
+// Attaches the decoded userId to req so downstream routes can use it
+export default function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization
 
-const pool = getPool()
-
-// Register - creates a new user account with a hashed password
-// Returns a JWT token and user details on success
-router.post('/register', async (req, res) => {
-  const { username, password } = req.body
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'All fields are required' })
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' })
   }
+
+  const token = authHeader.split(' ')[1]
 
   try {
-    // Check username is not already taken
-    const existingUser = await pool.query(
-      'SELECT id FROM users WHERE username = $1',
-      [username]
-    )
-
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'Username already in use' })
-    }
-
-    // Hash the password before storing, never store plain text
-    const password_hash = await bcrypt.hash(password, 10)
-
-    const result = await pool.query(
-      'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username',
-      [username, password_hash]
-    )
-
-    const user = result.rows[0]
-
-    // Sign a JWT valid for 7 days
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' })
-
-    res.status(201).json({ token, user })
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    req.userId = decoded.userId
+    next()
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Server error' })
+    return res.status(401).json({ error: 'Invalid or expired token' })
   }
-})
-
-// Login - validates username and password, returns a JWT token on success
-// Generic error message used to avoid revealing whether a username exists
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'All fields are required' })
-  }
-
-  try {
-    const result = await pool.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    )
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid username or password' })
-    }
-
-    const user = result.rows[0]
-    const validPassword = await bcrypt.compare(password, user.password_hash)
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid username or password' })
-    }
-
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' })
-
-    res.json({ token, user: { id: user.id, username: user.username } })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Server error' })
-  }
-})
-
-export default router
+}

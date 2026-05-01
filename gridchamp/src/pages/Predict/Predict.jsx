@@ -31,15 +31,12 @@ const FALLBACK_DRIVERS = [
   { id: 20, code: "LAW", name: "Lawson", team: "Racing Bulls", colour: "#6692FF" },
 ];
 
-// Normalise Supabase timestamp to a valid UTC Date
-// Supabase returns timestamps with a space instead of T, e.g. "2026-05-01 20:30:00"
 function toUTC(dateStr) {
   if (!dateStr) return null
   const normalised = dateStr.replace(' ', 'T')
   return new Date(normalised.endsWith('Z') ? normalised : normalised + 'Z')
 }
 
-// Group drivers by team for the dropdown
 function groupByTeam(drivers) {
   const groups = {};
   for (const driver of drivers) {
@@ -49,7 +46,6 @@ function groupByTeam(drivers) {
   return Object.entries(groups);
 }
 
-// Custom driver dropdown for a single position slot
 function DriverDropdown({ position, selected, drivers, predictions, onSelect, onRemove, disabled }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -166,8 +162,9 @@ function Predict() {
           setDrivers(FALLBACK_DRIVERS);
         }
 
-        let leagueData = null;
+        // Determine slots — league setting if applicable, otherwise default 10
         let slots = 10;
+        let leagueData = null;
 
         if (leagueId) {
           leagueData = await leagueAPI.getOne(leagueId);
@@ -202,6 +199,9 @@ function Predict() {
             }
             setPredictions(filled);
             setAlreadySubmitted(true);
+          } else {
+            // No existing predictions — initialise empty slots at correct length
+            setPredictions(Array(slots).fill(null));
           }
 
           if (flPrediction) {
@@ -213,7 +213,11 @@ function Predict() {
             const driver = FALLBACK_DRIVERS.find((d) => d.code === dodPrediction.driver_code);
             if (driver) setDriverOfDayPick(driver);
           }
+        } else {
+          // No existing predictions — initialise empty slots at correct length
+          setPredictions(Array(slots).fill(null));
         }
+
       } catch (err) {
         setError("Failed to load session");
       } finally {
@@ -223,9 +227,7 @@ function Predict() {
     load();
   }, [sessionId, leagueId]);
 
-  useEffect(() => {
-    setPredictions(Array(positions).fill(null));
-  }, [positions]);
+  // Removed the separate positions useEffect that was wiping predictions on load
 
   const handleSelect = (position, driver) => {
     const updated = [...predictions];
@@ -282,7 +284,6 @@ function Predict() {
     );
   }
 
-  // Check if predictions are closed using predictions_close_at, falling back to scheduled_at
   const closeAt = session?.predictions_close_at || session?.scheduled_at;
   if (session && closeAt && new Date() > toUTC(closeAt)) {
     return (
